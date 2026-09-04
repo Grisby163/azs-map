@@ -197,6 +197,7 @@
         document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         currentRoute = null;
+        currentRouteActualCoords = null;
         applyFilters();
       });
       container.appendChild(allBtn);
@@ -243,11 +244,15 @@
       else return '#1E88E5';
     }
 
-    function applyFilters() {
+            async function applyFilters() {
       let stations = allStations;
 
       if (currentRoute) {
-        const line = turf.lineString(currentRoute.coords.map(c => [c[0], c[1]]));
+        await showRouteOnMap(currentRoute);
+        const lineCoords = currentRouteActualCoords 
+          ? currentRouteActualCoords.map(ll => [ll[1], ll[0]]) // [lon, lat]
+          : currentRoute.coords.map(c => [c[0], c[1]]);
+        const line = turf.lineString(lineCoords);
         stations = stations.filter(station => {
           const lat = station.lat, lon = station.lon;
           if (isNaN(lat) || isNaN(lon)) return false;
@@ -259,8 +264,8 @@
       stations = stations.filter(station => getPriceForFuel(station, currentFuel) !== null);
       filteredStations = stations;
       displayStations(stations);
+
       if (currentRoute) {
-        showRouteOnMap(currentRoute);
         updateNetworkPanel(stations);
         document.getElementById('network-panel').style.display = 'block';
       } else {
@@ -268,6 +273,7 @@
           map.removeLayer(routeLine);
           routeLine = null;
         }
+        currentRouteActualCoords = null;
         document.getElementById('network-panel').style.display = 'none';
       }
     }
