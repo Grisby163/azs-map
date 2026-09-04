@@ -21,7 +21,7 @@
     .tab-content { display: none; margin-top: 15px; }
     .tab-content.active { display: block; }
     .hidden { display: none; }
-    .msg { margin-top: 10px; font-weight: bold; 
+    .msg { margin-top: 10px; font-weight: bold; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -68,18 +68,18 @@
         <div id="priceListsTable"></div>
       </div>
 
-      <div id="create" class="tab-content">
+            <div id="create" class="tab-content">
         <h2>Создать карту</h2>
         <div class="form-group">
           <label>Имя клиента</label>
           <input type="text" id="clientName" placeholder="Название">
         </div>
         <div class="form-group">
-  <label>Область</label>
-  <select id="areaSelect">
-    <option value="">Без сообщения</option>
-  </select>
-</div>
+          <label>Область</label>
+          <select id="areaSelect">
+            <option value="">Без сообщения</option>
+          </select>
+        </div>
         <div class="form-group">
           <label>Показывать приветствие</label>
           <select id="showGreeting">
@@ -91,19 +91,20 @@
           <label>Ценовой лист</label>
           <select id="priceListSelect"></select>
         </div>
-        <div id="import" class="tab-content">
-  <h2>Импорт из Excel</h2>
-  <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
-  <div id="importStatus"></div>
-  <div id="mappingSection" style="display:none;">
-    <h3>Несопоставленные станции</h3>
-    <p>Для каждой станции укажите сеть из списка или создайте новую.</p>
-    <div id="unmatchedStations"></div>
-    <button onclick="submitImport()">Отправить импорт</button>
-  </div>
-</div>
         <button onclick="createCard()">Создать карту</button>
         <div id="createResult" class="msg"></div>
+      </div>
+
+      <div id="import" class="tab-content">
+        <h2>Импорт из Excel</h2>
+        <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
+        <div id="importStatus"></div>
+        <div id="mappingSection" style="display:none;">
+          <h3>Несопоставленные станции</h3>
+          <p>Для каждой станции укажите сеть из списка или создайте новую.</p>
+          <div id="unmatchedStations"></div>
+          <button onclick="submitImport()">Отправить импорт</button>
+        </div>
       </div>
     </div>
   </div>
