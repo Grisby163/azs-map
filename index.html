@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Карта АЗС</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; }
+    #map { height: 100vh; width: 100%; }
+    .popup-price { font-size: 18px; font-weight: bold; color: #1565C0; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    if (!token) {
+      document.body.innerHTML = '<h2 style="text-align:center;margin-top:50px;">Не указан токен</h2>';
+      throw new Error('Token missing');
+    }
+
+    // URL функции quick-service (замените, если у вас другое имя)
+    const API_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1/quick-service';
+
+    const map = L.map('map').setView([55.75, 37.62], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'OSM'
+    }).addTo(map);
+
+    fetch(`${API_URL}?token=${token}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(stations => {
+        if (!Array.isArray(stations)) {
+          throw new Error('Invalid data format');
+        }
+
+        // Отображаем маркеры
+        stations.forEach(station => {
+          if (!station.lat || !station.lon) return;
+
+          // Выбираем цвет на основе color_code (если есть) или по цене
+          let color;
+          if (station.color_code === 1) color = '#43A047';
+          else if (station.color_code === 2) color = '#FF9800';
+          else if (station.color_code === 3) color = '#1E88E5';
+          else {
+            // Автоматическое определение (пока просто синий)
+            color = '#1E88E5';
+          }
+
+          const marker = L.circleMarker([station.lat, station.lon], {
+            radius: 8,
+            fillColor: color,
+            color: '#fff',
+            weight: 2,
+            fillOpacity: 0.9
+          }).addTo(map);
+
+          // Формируем содержимое попапа
+          const priceInfo = station.prices && station.prices.length > 0
+            ? station.prices.map(p => {
+                if (p.is_discount) {
+                  return `${p.fuel_type}: ${p.discount_text || 'Скидка'}`;
+                } else {
+                  return `${p.fuel_type}: ${p.price_value} ₽/л`;
+                }
+              }).join('<br>')
+            : 'Цена не указана';
+
+          marker.bindPopup(`
+            <b>${station.name || 'АЗС'}</b><br>
+            ${station.address || ''}<br>
+            <span class="popup-price">${priceInfo}</span>
+            ${station.region ? `<br>Регион: ${station.region}` : ''}
+          `);
+        });
+
+        // Подгоняем границы под все станции
+        if (stations.length > 0) {
+          const bounds = L.latLngBounds(stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon]));
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching stations:', error);
+        document.body.innerHTML = `<h2 style="text-align:center;margin-top:50px;">Ошибка загрузки данных: ${error.message}</h2>`;
+      });
+  </script>
+</body>
+</html>
