@@ -174,42 +174,108 @@
     }
 
     async function loadNetworks() {
-      try {
-        const data = await fetchAdmin('networks');
-        const container = document.getElementById('networksTable');
-        if (!Array.isArray(data) || data.length === 0) {
-          container.innerHTML = '<p>Нет данных</p>';
-          return;
-        }
-        let html = '<table><tr><th>ID</th><th>Название</th><th>Цвет</th><th>Видимость</th></tr>';
-        data.forEach(net => {
-          html += `<tr><td>${net.id}</td><td>${net.name}</td><td>${net.color_code}</td><td>${net.visible}</td></tr>`;
-        });
-        html += '</table>';
-        container.innerHTML = html;
-      } catch (e) {
-        alert(e.message);
-      }
+  try {
+    const data = await fetchAdmin('networks');
+    const container = document.getElementById('networksTable');
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = '<p>Нет данных</p>';
+      return;
     }
-
+    let html = '<table><tr><th>ID</th><th>Название</th><th>Цвет</th><th>Видимость</th></tr>';
+    data.forEach(net => {
+      html += `<tr>
+        <td>${net.id}</td>
+        <td>${net.name}</td>
+        <td>
+          <select onchange="updateNetwork('${net.id}', 'color_code', this.value)">
+            <option value="0" ${net.color_code === 0 ? 'selected' : ''}>Авто</option>
+            <option value="1" ${net.color_code === 1 ? 'selected' : ''}>Зелёный</option>
+            <option value="2" ${net.color_code === 2 ? 'selected' : ''}>Оранжевый</option>
+            <option value="3" ${net.color_code === 3 ? 'selected' : ''}>Синий</option>
+          </select>
+        </td>
+        <td>
+          <input type="checkbox" ${net.visible ? 'checked' : ''} onchange="updateNetwork('${net.id}', 'visible', this.checked)">
+        </td>
+      </tr>`;
+    });
+    html += '</table>';
+    container.innerHTML = html;
+  } catch (e) {
+    alert(e.message);
+  }
+}
+async function updateNetwork(id, field, value) {
+  try {
+    const response = await fetch(`${ADMIN_BASE_URL}/admin-update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-key': adminKey
+      },
+      body: JSON.stringify({
+        table: 'networks',
+        id: id,
+        data: { [field]: value }
+      })
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      alert('Ошибка обновления: ' + (err.error || response.status));
+    }
+  } catch (e) {
+    alert('Ошибка сети: ' + e.message);
+  }
+}
+    async function updateStation(id, field, value) {
+  try {
+    const response = await fetch(`${ADMIN_BASE_URL}/admin-update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-key': adminKey
+      },
+      body: JSON.stringify({
+        table: 'stations',
+        id: id,
+        data: { [field]: value }
+      })
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      alert('Ошибка обновления: ' + (err.error || response.status));
+    }
+  } catch (e) {
+    alert('Ошибка станции: ' + e.message);
+  }
+}
     async function loadStations() {
-      try {
-        const data = await fetchAdmin('stations');
-        const container = document.getElementById('stationsTable');
-        if (!Array.isArray(data) || data.length === 0) {
-          container.innerHTML = '<p>Нет данных</p>';
-          return;
-        }
-        let html = '<table><tr><th>ID</th><th>Название</th><th>Сеть</th><th>Адрес</th><th>Регион</th><th>Видимость</th></tr>';
-        data.forEach(st => {
-          html += `<tr><td>${st.id}</td><td>${st.name}</td><td>${st.networks?.name || '—'}</td><td>${st.address || ''}</td><td>${st.region || ''}</td><td>${st.visible}</td></tr>`;
-        });
-        html += '</table>';
-        container.innerHTML = html;
-      } catch (e) {
-        alert(e.message);
-      }
+  try {
+    const data = await fetchAdmin('stations');
+    const container = document.getElementById('stationsTable');
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = '<p>Нет данных</p>';
+      return;
     }
+    let html = '<table><tr><th>ID</th><th>Название</th><th>Сеть</th><th>Адрес</th><th>Регион</th><th>Видимость</th></tr>';
+    data.forEach(st => {
+      html += `<tr>
+        <td>${st.id}</td>
+        <td>${st.name}</td>
+        <td>${st.networks?.name || '—'}</td>
+        <td>${st.address || ''}</td>
+        <td>${st.region || ''}</td>
+        <td>
+          <input type="checkbox" ${st.visible ? 'checked' : ''} onchange="updateStation('${st.id}', 'visible', this.checked)">
+        </td>
+      </tr>`;
+    });
+    html += '</table>';
+    container.innerHTML = html;
+  } catch (e) {
+    alert(e.message);
+  }
+}
 
     async function loadTokens() {
       try {
