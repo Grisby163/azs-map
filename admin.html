@@ -199,7 +199,7 @@
     data.forEach(net => {
       html += `<tr>
         <td>${net.id}</td>
-        <td>${net.name}</td>
+        <td>${net.name} (${net.region || '—'})</td>
         <td>
           <select onchange="updateNetwork('${net.id}', 'color_code', this.value)">
             <option value="0" ${net.color_code === 0 ? 'selected' : ''}>Авто</option>
@@ -276,7 +276,7 @@ async function updateNetwork(id, field, value) {
       html += `<tr>
         <td>${st.id}</td>
         <td>${st.name}</td>
-        <td>${st.networks?.name || '—'}</td>
+        <td>${st.networks ? `${st.networks.name} (${st.networks.region || '—'})` : '—'}</td>
         <td>${st.address || ''}</td>
         <td>${st.region || ''}</td>
         <td>
@@ -396,11 +396,9 @@ function handleExcelUpload(event) {
 }
 
 function parseExcelData(rows) {
-  // rows - массив строк, каждая строка - массив значений ячеек
-  // Игнорируем первые две строки (служебная и заголовки)
-  const networks = []; // левая таблица
-  const stations = []; // правая таблица
-  const networkSet = new Map(); // name -> price
+  const networks = [];
+  const stations = [];
+  const networkSet = new Map(); // key = name|region
 
   // Обработка левой таблицы (колонки A=0, B=1, C=2)
   for (let i = 2; i < rows.length; i++) {
@@ -409,43 +407,61 @@ function parseExcelData(rows) {
     const region = (row[0] || '').toString().trim();
     const name = (row[1] || '').toString().trim();
     const price = (row[2] || '').toString().trim();
-    if (!name) continue; // пустая строка
-    // Сохраняем сеть (можно с ценой)
-    if (!networkSet.has(name + '|' + region)) {
-    networkSet.set(name + '|' + region, { name, region, price });
+    if (!name) continue;
+    const key = name + '|' + region;
+    if (!networkSet.has(key)) {
+      networkSet.set(key, { name, region, price });
     }
   }
-
   networks.push(...networkSet.values());
 
+  // Построим карту для быстрого поиска по имени (без учёта региона)
+  const networksByNameLower = new Map();
+  networks.forEach(n => {
+    const lower = n.name.toLowerCase();
+    if (!networksByNameLower.has(lower)) {
+      networksByNameLower.set(lower, n);
+    }
+  });
+
   // Обработка правой таблицы (колонки E=4, F=5, G=6, H=7, I=8)
+  let lastRegion = '';
   for (let i = 2; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
-    const region = (row[4] || '').toString().trim();
+    const regionRaw = (row[4] || '').toString().trim();
+    if (regionRaw) lastRegion = regionRaw;
+    const currentRegion = lastRegion; // используем последний непустой
     const nameFull = (row[5] || '').toString().trim();
     const address = (row[6] || '').toString().trim();
     const lat = parseFloat(row[7]);
     const lon = parseFloat(row[8]);
-    if (!nameFull || isNaN(lat) || isNaN(lon)) continue; // пропускаем без координат или имени
+    if (!nameFull || isNaN(lat) || isNaN(lon)) continue;
 
     // Извлекаем имя сети: до первой скобки
     let networkGuess = nameFull.split('(')[0].trim();
-    if (!networkGuess) networkGuess = nameFull; // если скобок нет
+    if (!networkGuess) networkGuess = nameFull;
+
+    // Определяем регион сети: если есть сеть с таким именем в левой таблице, берём её регион, иначе регион станции
+    let networkRegion = currentRegion;
+    if (networksByNameLower.has(networkGuess.toLowerCase())) {
+      networkRegion = networksByNameLower.get(networkGuess.toLowerCase()).region;
+    }
 
     stations.push({
-      region,
+      region: currentRegion,
       name: nameFull,
       address,
       lat,
       lon,
       network_name: networkGuess,
-      matched: false, // будет ли сопоставлена с существующей сетью
-      networkOptions: networks // список сетей из левой таблицы
+      network_region: networkRegion,
+      matched: false,
+      networkOptions: networks
     });
   }
 
-  // Проверяем, нашлась ли сеть для каждой станции
+  // Проверка сопоставления
   const networkNames = networks.map(n => n.name.toLowerCase());
   stations.forEach(station => {
     if (networkNames.includes(station.network_name.toLowerCase())) {
@@ -454,8 +470,6 @@ function parseExcelData(rows) {
   });
 
   importData = { networks, stations };
-
-  // Отображаем результат
   displayImportSummary();
 }
 
