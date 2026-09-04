@@ -411,8 +411,8 @@ function parseExcelData(rows) {
     const price = (row[2] || '').toString().trim();
     if (!name) continue; // пустая строка
     // Сохраняем сеть (можно с ценой)
-    if (!networkSet.has(name)) {
-      networkSet.set(name, { name, region, price });
+    if (!networkSet.has(name + '|' + region)) {
+    networkSet.set(name + '|' + region, { name, region, price });
     }
   }
 
@@ -490,6 +490,8 @@ function renderUnmatchedList(unmatched) {
       <td>
         <select id="select_${idx}">
           <option value="">-- выбрать сеть --</option>
+          <option value="__delete__">УДАЛИТЬ</option>
+          <option value="">-- выбрать сеть --</option>
           ${station.networkOptions.map(n => `<option value="${n.name}">${n.name}</option>`).join('')}
           <option value="__new__">Создать новую...</option>
         </select>
@@ -516,7 +518,7 @@ function renderUnmatchedList(unmatched) {
 }
 
 function submitImport() {
-  // Проходим по несопоставленным станциям и обновляем network_name в соответствии с выбором
+  // Для несопоставленных обрабатываем выбор
   if (importData.stations.some(s => !s.matched)) {
     const unmatchedIndexes = [];
     importData.stations.forEach((station, idx) => {
@@ -524,29 +526,36 @@ function submitImport() {
     });
     unmatchedIndexes.forEach((idx, i) => {
       const select = document.getElementById(`select_${i}`);
-      const newInput = document.getElementById(`newNetwork_${i}`);
-      if (select.value === '__new__') {
-        importData.stations[idx].network_name = newInput.value.trim();
-        // Добавляем новую сеть в networks, если её ещё нет
-        if (newInput.value.trim() && !importData.networks.some(n => n.name === newInput.value.trim())) {
-          importData.networks.push({ name: newInput.value.trim(), region: '', price: '' });
+      if (select.value === '__delete__') {
+        // пометим на удаление
+        importData.stations[idx].__delete = true;
+      } else {
+        importData.stations[idx].__delete = false;
+        if (select.value === '__new__') {
+          importData.stations[idx].network_name = document.getElementById(`newNetwork_${i}`).value.trim();
+          if (importData.stations[idx].network_name && !importData.networks.some(n => n.name === importData.stations[idx].network_name)) {
+            importData.networks.push({ name: importData.stations[idx].network_name, region: '', price: '' });
+          }
+        } else if (select.value) {
+          importData.stations[idx].network_name = select.value;
         }
-      } else if (select.value) {
-        importData.stations[idx].network_name = select.value;
       }
     });
   }
 
+  // Отбираем станции без пометки на удаление
+  const stationsToSend = importData.stations.filter(s => !s.__delete).map(s => ({
+    region: s.region,
+    name: s.name,
+    address: s.address,
+    lat: s.lat,
+    lon: s.lon,
+    network_name: s.network_name
+  }));
+
   const payload = {
     networks: importData.networks,
-    stations: importData.stations.map(s => ({
-      region: s.region,
-      name: s.name,
-      address: s.address,
-      lat: s.lat,
-      lon: s.lon,
-      network_name: s.network_name
-    }))
+    stations: stationsToSend
   };
 
   // Отправляем на сервер
