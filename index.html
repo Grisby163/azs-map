@@ -78,6 +78,39 @@
       cursor: pointer;
       width: 100%;
     }
+    .greeting-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .greeting-modal {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      text-align: center;
+      max-width: 400px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .greeting-banner {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 10001;
+      background: #0D1B2A;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -91,6 +124,15 @@
     <div class="network-list" id="network-list"></div>
     <button class="download-btn" onclick="downloadExcel()">📥 Скачать Excel</button>
   </div>
+  <div id="greeting-overlay" class="greeting-overlay" style="display:none;">
+    <div class="greeting-modal">
+      <span style="font-size:48px;">🤝</span>
+      <h2>Специальное предложение</h2>
+      <p id="greeting-text"></p>
+      <button onclick="document.getElementById('greeting-overlay').style.display='none'" style="margin-top:16px;padding:10px 24px;background:#1565C0;color:white;border:none;border-radius:8px;font-size:16px;cursor:pointer;">Понятно</button>
+    </div>
+  </div>
+  <div id="greeting-banner" class="greeting-banner"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
@@ -112,11 +154,11 @@
 
     let allStations = [];
     let currentFuel = 'ДТ-Л';
-    let currentRoute = null; // объект маршрута {name, coords, radius}
+    let currentRoute = null;
     let markersLayer = L.layerGroup().addTo(map);
     let routeLine = null;
+    let filteredStations = [];
 
-    // Маршруты
     const highwayRoutes = {
       m10: { name: "Москва – Санкт‑Петербург (М10)", coords: [[37.5634,55.7756],[35.9176,56.8587],[34.9604,57.0411],[33.2486,57.9797],[31.2749,58.5228],[30.5043,59.8066]], radius: 5 },
       m4:  { name: "Москва – Краснодар (М4)", coords: [[37.6073,55.5796],[39.1844,51.6720],[39.7187,47.2225],[38.9753,45.0355]], radius: 5 },
@@ -124,7 +166,6 @@
       m7:  { name: "Москва – Владивосток (М7)", coords: [[37.6252,55.7530],[40.3966,56.1365],[43.9361,56.2965],[49.1233,55.7879],[56.2502,58.0105],[60.6057,56.8389],[65.5272,57.1522],[73.3682,54.9893],[82.9357,55.0084],[92.8526,56.0105],[104.2807,52.2864],[107.5842,51.8335],[113.4994,52.0340],[119.7308,53.7574],[127.2411,52.4493],[127.5274,50.2525],[135.0718,48.4802],[131.8855,43.1155]], radius: 5 }
     };
 
-    // Создание кнопок топлива
     function buildFuelButtons() {
       const fuels = ['ДТ-Л', 'ДТ-Е', 'ДТ-З', 'Газ'];
       const container = document.getElementById('fuel-panel');
@@ -144,11 +185,9 @@
       });
     }
 
-    // Создание кнопок маршрутов
     function buildRouteButtons() {
       const container = document.getElementById('route-panel');
       container.innerHTML = '<span style="font-size:12px;margin-right:4px;">Маршрут:</span>';
-      // Кнопка "Все"
       const allBtn = document.createElement('button');
       allBtn.className = 'route-btn active';
       allBtn.textContent = 'Все';
@@ -164,7 +203,7 @@
       Object.keys(highwayRoutes).forEach(key => {
         const btn = document.createElement('button');
         btn.className = 'route-btn';
-        btn.textContent = highwayRoutes[key].name.split('(')[1]?.replace(')','') || key;
+        btn.textContent = key.toUpperCase();
         btn.dataset.route = key;
         btn.addEventListener('click', function() {
           document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
@@ -203,12 +242,9 @@
       else return '#1E88E5';
     }
 
-    let filteredStations = []; // станции после применения фильтра топлива и маршрута
-
     function applyFilters() {
       let stations = allStations;
 
-      // Фильтр по маршруту
       if (currentRoute) {
         const line = turf.lineString(currentRoute.coords.map(c => [c[0], c[1]]));
         stations = stations.filter(station => {
@@ -219,11 +255,7 @@
         });
       }
 
-      // Фильтр по топливу (станции без выбранного топлива отбрасываются)
-      stations = stations.filter(station => {
-        return getPriceForFuel(station, currentFuel) !== null;
-      });
-
+      stations = stations.filter(station => getPriceForFuel(station, currentFuel) !== null);
       filteredStations = stations;
       displayStations(stations);
       if (currentRoute) {
@@ -317,11 +349,9 @@
         </div>`;
       });
       listDiv.innerHTML = html || 'Нет станций с ценами';
-      // Сохраняем данные для Excel
       window._networkData = { nets: sorted, details: networks, routeName: currentRoute.name };
     }
 
-    // Скачивание Excel
     window.downloadExcel = function() {
       if (!window._networkData) return;
       const data = window._networkData;
@@ -341,7 +371,6 @@
         const nd = data.details[net];
         rows.push([net, nd.price.toFixed(2) + ' ₽/л']);
       });
-      // Добавляем координаты
       rows.push([], ['Координаты АЗС'], ['Название', 'Адрес', 'Цена', 'Широта', 'Долгота']);
       filteredStations.forEach(station => {
         const price = getPriceForFuel(station, currentFuel);
@@ -361,17 +390,68 @@
       XLSX.writeFile(wb, 'АЗС_маршрут.xlsx');
     };
 
-    // Инициализация
-    fetch(`${API_URL}?token=${token}`)
+    function showGreeting(area, showGreetingFlag) {
+      if (!showGreetingFlag) return;
+      const greetingKey = 'greeting_shown_' + token;
+      if (sessionStorage.getItem(greetingKey)) {
+        const banner = document.getElementById('greeting-banner');
+        banner.textContent = getGreetingMessage(area);
+        banner.style.display = 'block';
+        setTimeout(() => banner.style.display = 'none', 5000);
+      } else {
+        document.getElementById('greeting-text').textContent = getGreetingMessage(area);
+        document.getElementById('greeting-overlay').style.display = 'flex';
+        sessionStorage.setItem(greetingKey, 'true');
+      }
+    }
+
+    function getGreetingMessage(area) {
+      let bestPrice = null;
+      let bestStation = null;
+      allStations.forEach(station => {
+        if (area && station.region && station.region.toLowerCase().indexOf(area.toLowerCase()) !== -1) {
+          const price = getPriceForFuel(station, currentFuel);
+          if (price && !price.is_discount && price.price_value > 0) {
+            if (bestPrice === null || price.price_value < bestPrice) {
+              bestPrice = price.price_value;
+              bestStation = station;
+            }
+          }
+        }
+      });
+      let msg = 'Предлагаем заправку по нашей партнёрской сети с оптовыми ценами.';
+      if (bestStation) {
+        msg += ` Лучшая цена в ${area}: ${bestPrice.toFixed(2)} ₽/л (${bestStation.name}).`;
+      } else {
+        msg += ' Цены действительны для всей России.';
+      }
+      return msg;
+    }
+
+    // ЗАГРУЗКА ДАННЫХ
+        fetch(`${API_URL}?token=${token}`)
       .then(response => {
         if (!response.ok) throw new Error('Network response was not ok');
         return response.json();
       })
-      .then(stations => {
-        allStations = stations;
-        buildFuelButtons();
-        buildRouteButtons();
-        applyFilters(); // по умолчанию Все
+      .then(data => {
+        // Новый формат: { stations: [...], meta: { area, show_greeting } }
+        if (data.stations) {
+          allStations = data.stations;
+          const meta = data.meta || {};
+          const area = meta.area || 'России';
+          const showGreetingFlag = meta.show_greeting !== false;
+          buildFuelButtons();
+          buildRouteButtons();
+          applyFilters();
+          showGreeting(area, showGreetingFlag);
+        } else {
+          // Старый формат (на случай, если quick-service не обновлён)
+          allStations = data;
+          buildFuelButtons();
+          buildRouteButtons();
+          applyFilters();
+        }
       })
       .catch(error => {
         console.error('Error fetching stations:', error);
