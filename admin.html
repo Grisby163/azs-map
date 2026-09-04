@@ -104,6 +104,7 @@
       document.getElementById('adminKey').value = adminKey;
       document.getElementById('authSection').classList.remove('hidden');
       loadPriceListsForForm();
+      loadRegions();
       loadTokens();
     }
 
@@ -113,6 +114,7 @@
         localStorage.setItem('adminKey', adminKey);
         document.getElementById('authSection').classList.remove('hidden');
         loadPriceListsForForm();
+        loadRegions();
         loadTokens();
       } else {
         alert('Введите ключ');
@@ -235,10 +237,26 @@
         alert(e.message);
       }
     }
-
+async function loadRegions() {
+  try {
+    const regions = await fetchAdmin('regions');
+    const select = document.getElementById('areaSelect');
+    select.innerHTML = '<option value="">Без сообщения</option>';
+    if (Array.isArray(regions)) {
+      regions.forEach(region => {
+        const opt = document.createElement('option');
+        opt.value = region;
+        opt.textContent = region;
+        select.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
     async function createCard() {
       const clientName = document.getElementById('clientName').value.trim();
-      const area = document.getElementById('area').value.trim() || 'России';
+      const area = document.getElementById('areaSelect').value;
       const showGreeting = document.getElementById('showGreeting').value === 'true';
       const priceListId = document.getElementById('priceListSelect').value;
 
