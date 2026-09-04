@@ -146,7 +146,7 @@
     }
 
     const API_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1/quick-service';
-    const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjZhY2Q5NDZiOGNkNjQyNTU5ZTVkYWM3ZWVmNGE3NzNmIiwiaCI6Im11cm11cjY0In0=';
+    const GH_API_KEY = '3f5fc9bb-162b-4435-be0b-e422a93a3e40';
     const map = L.map('map').setView([55.75, 37.62], 10);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OSM'
@@ -157,6 +157,7 @@
     let currentRoute = null;
     let markersLayer = L.layerGroup().addTo(map);
     let routeLine = null;
+    let currentRouteActualCoords = null;
     let filteredStations = [];
 
     const highwayRoutes = {
@@ -317,32 +318,30 @@
   if (routeLine) map.removeLayer(routeLine);
 
   try {
-    // Формируем координаты в формате ORS: lon1,lat1|lon2,lat2|...
-    const coordsStr = route.coords.map(c => `${c[0]},${c[1]}`).join('|');
-    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${coordsStr.split('|')[0]}&end=${coordsStr.split('|')[coordsStr.split('|').length - 1]}`;
+    // Формируем параметры point=lat,lon для каждой опорной точки
+    const points = route.coords.map(c => `point=${c[1]},${c[0]}`).join('&');
+    const url = `https://graphhopper.com/api/1/route?${points}&vehicle=car&locale=ru&key=${GH_API_KEY}&avoid=toll&points_encoded=false`;
 
-    // Для промежуточных точек добавляем через '|'
-    const waypoints = route.coords.slice(1, -1).map(c => `${c[0]},${c[1]}`);
-    let fullUrl = url;
-    if (waypoints.length > 0) {
-      fullUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${route.coords[0][0]},${route.coords[0][1]}&end=${route.coords[route.coords.length - 1][0]},${route.coords[route.coords.length - 1][1]}&waypoints=${waypoints.join('|')}&avoid_features=tollways`;
-    } else {
-      fullUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${route.coords[0][0]},${route.coords[0][1]}&end=${route.coords[route.coords.length - 1][0]},${route.coords[route.coords.length - 1][1]}&avoid_features=tollways`;
-    }
-
-    const response = await fetch(fullUrl);
-    if (!response.ok) throw new Error('ORS error');
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('GraphHopper error');
     const data = await response.json();
 
-    if (!data.features || data.features.length === 0) throw new Error('No route');
+    if (!data.paths || data.paths.length === 0) throw new Error('No route');
 
-    const geometry = data.features[0].geometry;
-    const latlngs = geometry.coordinates.map(c => [c[1], c[0]]);
+    // Координаты в формате [[lon, lat], ...]
+    const coords = data.paths[0].points.coordinates;
+    // Преобразуем в массив [lat, lon] для Leaflet
+    const latlngs = coords.map(c => [c[1], c[0]]);
+
     routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+
+    // Сохраняем реальные координаты для фильтрации станций
+    currentRouteActualCoords = latlngs;
   } catch (e) {
-    // Если ORS не сработал – рисуем прямую линию
+    // Fallback: рисуем прямую линию по опорным точкам
     const latlngs = route.coords.map(c => [c[1], c[0]]);
     routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+    currentRouteActualCoords = null;
   }
 }
 
