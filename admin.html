@@ -21,8 +21,9 @@
     .tab-content { display: none; margin-top: 15px; }
     .tab-content.active { display: block; }
     .hidden { display: none; }
-    .msg { margin-top: 10px; font-weight: bold; }
+    .msg { margin-top: 10px; font-weight: bold; 
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -40,6 +41,7 @@
         <span class="tab" onclick="switchTab('stations')">Станции</span>
         <span class="tab" onclick="switchTab('priceLists')">Ценовые листы</span>
         <span class="tab" onclick="switchTab('create')">Создать карту</span>
+        <span class="tab" onclick="switchTab('import')">Импорт</span>
       </div>
 
       <div id="clients" class="tab-content active">
@@ -89,6 +91,17 @@
           <label>Ценовой лист</label>
           <select id="priceListSelect"></select>
         </div>
+        <div id="import" class="tab-content">
+  <h2>Импорт из Excel</h2>
+  <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
+  <div id="importStatus"></div>
+  <div id="mappingSection" style="display:none;">
+    <h3>Несопоставленные станции</h3>
+    <p>Для каждой станции укажите сеть из списка или создайте новую.</p>
+    <div id="unmatchedStations"></div>
+    <button onclick="submitImport()">Отправить импорт</button>
+  </div>
+</div>
         <button onclick="createCard()">Создать карту</button>
         <div id="createResult" class="msg"></div>
       </div>
@@ -357,6 +370,205 @@ async function loadRegions() {
         document.getElementById('createResult').innerHTML = `<p style="color:red;">Ошибка: ${e.message}</p>`;
       }
     }
+    let importData = null; // здесь будет храниться распарсенный результат
+
+function handleExcelUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]; // Лист1
+      if (!sheet) {
+        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не найден лист</p>';
+        return;
+      }
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      parseExcelData(json);
+    } catch (err) {
+      document.getElementById('importStatus').innerHTML = '<p style="color:red;">Ошибка чтения файла: ' + err.message + '</p>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseExcelData(rows) {
+  // rows - массив строк, каждая строка - массив значений ячеек
+  // Игнорируем первые две строки (служебная и заголовки)
+  const networks = []; // левая таблица
+  const stations = []; // правая таблица
+  const networkSet = new Map(); // name -> price
+
+  // Обработка левой таблицы (колонки A=0, B=1, C=2)
+  for (let i = 2; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const region = (row[0] || '').toString().trim();
+    const name = (row[1] || '').toString().trim();
+    const price = (row[2] || '').toString().trim();
+    if (!name) continue; // пустая строка
+    // Сохраняем сеть (можно с ценой)
+    if (!networkSet.has(name)) {
+      networkSet.set(name, { name, region, price });
+    }
+  }
+
+  networks.push(...networkSet.values());
+
+  // Обработка правой таблицы (колонки E=4, F=5, G=6, H=7, I=8)
+  for (let i = 2; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const region = (row[4] || '').toString().trim();
+    const nameFull = (row[5] || '').toString().trim();
+    const address = (row[6] || '').toString().trim();
+    const lat = parseFloat(row[7]);
+    const lon = parseFloat(row[8]);
+    if (!nameFull || isNaN(lat) || isNaN(lon)) continue; // пропускаем без координат или имени
+
+    // Извлекаем имя сети: до первой скобки
+    let networkGuess = nameFull.split('(')[0].trim();
+    if (!networkGuess) networkGuess = nameFull; // если скобок нет
+
+    stations.push({
+      region,
+      name: nameFull,
+      address,
+      lat,
+      lon,
+      network_name: networkGuess,
+      matched: false, // будет ли сопоставлена с существующей сетью
+      networkOptions: networks // список сетей из левой таблицы
+    });
+  }
+
+  // Проверяем, нашлась ли сеть для каждой станции
+  const networkNames = networks.map(n => n.name.toLowerCase());
+  stations.forEach(station => {
+    if (networkNames.includes(station.network_name.toLowerCase())) {
+      station.matched = true;
+    }
+  });
+
+  importData = { networks, stations };
+
+  // Отображаем результат
+  displayImportSummary();
+}
+
+function displayImportSummary() {
+  const statusDiv = document.getElementById('importStatus');
+  const totalNetworks = importData.networks.length;
+  const totalStations = importData.stations.length;
+  const unmatched = importData.stations.filter(s => !s.matched);
+  statusDiv.innerHTML = `
+    <p>Найдено сетей: ${totalNetworks}</p>
+    <p>Найдено станций: ${totalStations}</p>
+    <p>Несопоставлено станций: ${unmatched.length}</p>
+  `;
+
+  if (unmatched.length > 0) {
+    document.getElementById('mappingSection').style.display = 'block';
+    renderUnmatchedList(unmatched);
+  } else {
+    document.getElementById('mappingSection').style.display = 'none';
+    // Все сопоставлены, можно сразу отправить
+    submitImport();
+  }
+}
+
+function renderUnmatchedList(unmatched) {
+  const container = document.getElementById('unmatchedStations');
+  let html = '<table border="1" cellpadding="5"><tr><th>Станция</th><th>Адрес</th><th>Выберите сеть</th></tr>';
+  unmatched.forEach((station, idx) => {
+    html += `<tr>
+      <td>${station.name}</td>
+      <td>${station.address}</td>
+      <td>
+        <select id="select_${idx}">
+          <option value="">-- выбрать сеть --</option>
+          ${station.networkOptions.map(n => `<option value="${n.name}">${n.name}</option>`).join('')}
+          <option value="__new__">Создать новую...</option>
+        </select>
+        <input type="text" id="newNetwork_${idx}" placeholder="Название новой сети" style="display:none;">
+      </td>
+    </tr>`;
+  });
+  html += '</table>';
+  container.innerHTML = html;
+
+  // Обработчики для селектов
+  unmatched.forEach((station, idx) => {
+    const select = document.getElementById(`select_${idx}`);
+    select.addEventListener('change', function() {
+      const newInput = document.getElementById(`newNetwork_${idx}`);
+      if (this.value === '__new__') {
+        newInput.style.display = 'inline';
+        newInput.focus();
+      } else {
+        newInput.style.display = 'none';
+      }
+    });
+  });
+}
+
+function submitImport() {
+  // Проходим по несопоставленным станциям и обновляем network_name в соответствии с выбором
+  if (importData.stations.some(s => !s.matched)) {
+    const unmatchedIndexes = [];
+    importData.stations.forEach((station, idx) => {
+      if (!station.matched) unmatchedIndexes.push(idx);
+    });
+    unmatchedIndexes.forEach((idx, i) => {
+      const select = document.getElementById(`select_${i}`);
+      const newInput = document.getElementById(`newNetwork_${i}`);
+      if (select.value === '__new__') {
+        importData.stations[idx].network_name = newInput.value.trim();
+        // Добавляем новую сеть в networks, если её ещё нет
+        if (newInput.value.trim() && !importData.networks.some(n => n.name === newInput.value.trim())) {
+          importData.networks.push({ name: newInput.value.trim(), region: '', price: '' });
+        }
+      } else if (select.value) {
+        importData.stations[idx].network_name = select.value;
+      }
+    });
+  }
+
+  const payload = {
+    networks: importData.networks,
+    stations: importData.stations.map(s => ({
+      region: s.region,
+      name: s.name,
+      address: s.address,
+      lat: s.lat,
+      lon: s.lon,
+      network_name: s.network_name
+    }))
+  };
+
+  // Отправляем на сервер
+  fetch(`${ADMIN_BASE_URL}/admin-import`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-key': adminKey
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка: ${data.error}</p>`;
+    } else {
+      document.getElementById('importStatus').innerHTML += `<p style="color:green;">Импорт успешно завершён! Станций: ${data.processedStations}</p>`;
+    }
+  })
+  .catch(err => {
+    document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
+  });
+}
   </script>
 </body>
 </html>
