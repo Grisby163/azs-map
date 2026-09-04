@@ -24,7 +24,7 @@
       justify-content: center;
       align-items: center;
     }
-    .fuel-btn {
+    .fuel-btn, .route-btn {
       padding: 6px 12px;
       border: 1px solid #ccc;
       background: white;
@@ -33,7 +33,7 @@
       font-size: 13px;
       font-weight: 500;
     }
-    .fuel-btn.active {
+    .fuel-btn.active, .route-btn.active {
       background: #1565C0;
       color: white;
       border-color: #1565C0;
@@ -41,13 +41,60 @@
     .popup-price { font-size: 16px; font-weight: bold; color: #1565C0; }
     .market-info { font-size: 12px; color: #d32f2f; margin-top: 4px; }
     .saving-info { font-size: 13px; color: #2e7d32; font-weight: bold; }
+    .network-panel {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      z-index: 1001;
+      background: white;
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      max-width: 260px;
+      display: none;
+      font-size: 13px;
+    }
+    .network-panel h4 { margin: 0 0 8px; color: #1565C0; }
+    .network-list { max-height: 300px; overflow-y: auto; }
+    .network-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #eee;
+      align-items: center;
+    }
+    .network-item.opt { background: #E8F5E9; }
+    .network-item.best { background: #FFF8E1; }
+    .dot-indicator { width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+    .download-btn {
+      display: block;
+      margin-top: 10px;
+      padding: 6px 12px;
+      background: #1565C0;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
-  <div class="control-panel" id="fuel-panel"></div>
+  <div class="control-panel">
+    <div id="fuel-panel"></div>
+    <div id="route-panel"></div>
+  </div>
   <div id="map"></div>
+  <div class="network-panel" id="network-panel">
+    <h4>АЗС на маршруте (5 км)</h4>
+    <div class="network-list" id="network-list"></div>
+    <button class="download-btn" onclick="downloadExcel()">📥 Скачать Excel</button>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -64,10 +111,20 @@
     }).addTo(map);
 
     let allStations = [];
-    let currentFuel = 'ДТ-Л'; // топливо по умолчанию
+    let currentFuel = 'ДТ-Л';
+    let currentRoute = null; // объект маршрута {name, coords, radius}
     let markersLayer = L.layerGroup().addTo(map);
+    let routeLine = null;
 
-    // Создание кнопок фильтра топлива
+    // Маршруты
+    const highwayRoutes = {
+      m10: { name: "Москва – Санкт‑Петербург (М10)", coords: [[37.5634,55.7756],[35.9176,56.8587],[34.9604,57.0411],[33.2486,57.9797],[31.2749,58.5228],[30.5043,59.8066]], radius: 5 },
+      m4:  { name: "Москва – Краснодар (М4)", coords: [[37.6073,55.5796],[39.1844,51.6720],[39.7187,47.2225],[38.9753,45.0355]], radius: 5 },
+      m5:  { name: "Москва – Владивосток (М5)", coords: [[37.7145,55.5854],[39.6916,54.6269],[45.0184,53.1959],[50.1002,53.1959],[55.9578,54.7348],[61.4368,55.1644],[65.3053,55.4649],[73.3682,54.9893],[82.9357,55.0084],[92.8526,56.0105],[104.2807,52.2864],[107.5842,51.8335],[113.4994,52.0340],[119.7308,53.7574],[127.2411,52.4493],[127.5274,50.2525],[135.0718,48.4802],[131.8855,43.1155]], radius: 5 },
+      m7:  { name: "Москва – Владивосток (М7)", coords: [[37.6252,55.7530],[40.3966,56.1365],[43.9361,56.2965],[49.1233,55.7879],[56.2502,58.0105],[60.6057,56.8389],[65.5272,57.1522],[73.3682,54.9893],[82.9357,55.0084],[92.8526,56.0105],[104.2807,52.2864],[107.5842,51.8335],[113.4994,52.0340],[119.7308,53.7574],[127.2411,52.4493],[127.5274,50.2525],[135.0718,48.4802],[131.8855,43.1155]], radius: 5 }
+    };
+
+    // Создание кнопок топлива
     function buildFuelButtons() {
       const fuels = ['ДТ-Л', 'ДТ-Е', 'ДТ-З', 'Газ'];
       const container = document.getElementById('fuel-panel');
@@ -81,35 +138,58 @@
           document.querySelectorAll('.fuel-btn').forEach(b => b.classList.remove('active'));
           this.classList.add('active');
           currentFuel = this.dataset.fuel;
-          displayStations(allStations);
+          applyFilters();
         });
         container.appendChild(btn);
       });
     }
 
-    // Получение цены для станции и выбранного топлива
-    function getPriceForFuel(station, fuel) {
-      if (!station.prices || station.prices.length === 0) return null;
-      const price = station.prices.find(p => p.fuel_type === fuel);
-      if (!price) return null;
-      return price;
+    // Создание кнопок маршрутов
+    function buildRouteButtons() {
+      const container = document.getElementById('route-panel');
+      container.innerHTML = '<span style="font-size:12px;margin-right:4px;">Маршрут:</span>';
+      // Кнопка "Все"
+      const allBtn = document.createElement('button');
+      allBtn.className = 'route-btn active';
+      allBtn.textContent = 'Все';
+      allBtn.dataset.route = '';
+      allBtn.addEventListener('click', function() {
+        document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentRoute = null;
+        applyFilters();
+      });
+      container.appendChild(allBtn);
+
+      Object.keys(highwayRoutes).forEach(key => {
+        const btn = document.createElement('button');
+        btn.className = 'route-btn';
+        btn.textContent = highwayRoutes[key].name.split('(')[1]?.replace(')','') || key;
+        btn.dataset.route = key;
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          currentRoute = highwayRoutes[key];
+          applyFilters();
+        });
+        container.appendChild(btn);
+      });
     }
 
-    // Определение цвета маркера
+    function getPriceForFuel(station, fuel) {
+      if (!station.prices || station.prices.length === 0) return null;
+      return station.prices.find(p => p.fuel_type === fuel) || null;
+    }
+
     function getMarkerColor(station, price) {
-      // Если у сети задан color_code 1,2,3, используем его
       if (station.color_code === 1) return '#43A047';
       if (station.color_code === 2) return '#FF9800';
       if (station.color_code === 3) return '#1E88E5';
 
-      // Автоматическое определение
-      if (!price || price.is_discount) return '#1E88E5'; // синий для скидок и газа
-      if (fuel === 'Газ') return '#1E88E5';
+      if (!price || price.is_discount) return '#1E88E5';
+      if (currentFuel === 'Газ') return '#1E88E5';
 
-      // Для ДТ используем распределение по цене
-      const numericPrice = price.price_value;
-      // здесь нужно определить мин/макс по всем станциям для текущего топлива
-      const validPrices = allStations
+      const validPrices = filteredStations
         .map(s => getPriceForFuel(s, currentFuel))
         .filter(p => p && !p.is_discount && p.price_value > 0)
         .map(p => p.price_value);
@@ -117,17 +197,51 @@
       const min = Math.min(...validPrices);
       const max = Math.max(...validPrices);
       const range = max - min || 1;
-      const ratio = (numericPrice - min) / range;
+      const ratio = (price.price_value - min) / range;
       if (ratio < 0.3) return '#43A047';
       else if (ratio < 0.7) return '#FF9800';
       else return '#1E88E5';
     }
 
-    // Отображение станций с учётом фильтра
+    let filteredStations = []; // станции после применения фильтра топлива и маршрута
+
+    function applyFilters() {
+      let stations = allStations;
+
+      // Фильтр по маршруту
+      if (currentRoute) {
+        const line = turf.lineString(currentRoute.coords.map(c => [c[0], c[1]]));
+        stations = stations.filter(station => {
+          const lat = station.lat, lon = station.lon;
+          if (isNaN(lat) || isNaN(lon)) return false;
+          const dist = turf.pointToLineDistance(turf.point([lon, lat]), line, { units: 'kilometers' });
+          return dist <= currentRoute.radius;
+        });
+      }
+
+      // Фильтр по топливу (станции без выбранного топлива отбрасываются)
+      stations = stations.filter(station => {
+        return getPriceForFuel(station, currentFuel) !== null;
+      });
+
+      filteredStations = stations;
+      displayStations(stations);
+      if (currentRoute) {
+        showRouteOnMap(currentRoute);
+        updateNetworkPanel(stations);
+        document.getElementById('network-panel').style.display = 'block';
+      } else {
+        if (routeLine) {
+          map.removeLayer(routeLine);
+          routeLine = null;
+        }
+        document.getElementById('network-panel').style.display = 'none';
+      }
+    }
+
     function displayStations(stations) {
       markersLayer.clearLayers();
       stations.forEach(station => {
-        if (!station.lat || !station.lon) return;
         const price = getPriceForFuel(station, currentFuel);
         const color = getMarkerColor(station, price);
         const marker = L.circleMarker([station.lat, station.lon], {
@@ -145,7 +259,6 @@
             popupContent += `<div>Скидка: ${price.discount_text || 'уточняйте'}</div>`;
           } else {
             popupContent += `<span class="popup-price">${price.price_value} ₽/л</span>`;
-            // Сравнение с рыночной ценой
             if (station.market_price && !isNaN(station.market_price)) {
               const market = parseFloat(station.market_price);
               const diff = market - price.price_value;
@@ -162,14 +275,93 @@
         marker.bindPopup(popupContent);
       });
 
-      // Подгоняем границы, если есть станции
       if (stations.length > 0) {
         const bounds = L.latLngBounds(stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon]));
         map.fitBounds(bounds, { padding: [50, 50] });
       }
     }
 
-    // Загрузка данных
+    function showRouteOnMap(route) {
+      if (routeLine) map.removeLayer(routeLine);
+      const latlngs = route.coords.map(c => [c[1], c[0]]);
+      routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+    }
+
+    function updateNetworkPanel(stations) {
+      const networks = {};
+      stations.forEach(station => {
+        const net = station.network_name || 'Прочие';
+        const price = getPriceForFuel(station, currentFuel);
+        if (!price || price.is_discount) return;
+        const numPrice = price.price_value;
+        if (!networks[net]) {
+          networks[net] = { price: numPrice, count: 0, color: getMarkerColor(station, price) };
+        } else {
+          if (numPrice < networks[net].price) {
+            networks[net].price = numPrice;
+            networks[net].color = getMarkerColor(station, price);
+          }
+        }
+        networks[net].count++;
+      });
+
+      const sorted = Object.keys(networks).sort((a,b) => networks[a].price - networks[b].price);
+      const listDiv = document.getElementById('network-list');
+      let html = '';
+      sorted.forEach(net => {
+        const nd = networks[net];
+        const colorClass = nd.color === '#43A047' ? 'opt' : 'best';
+        html += `<div class="network-item ${colorClass}">
+          <span><span class="dot-indicator" style="background:${nd.color}"></span>${net} (${nd.count})</span>
+          <span>${nd.price.toFixed(2)} ₽/л</span>
+        </div>`;
+      });
+      listDiv.innerHTML = html || 'Нет станций с ценами';
+      // Сохраняем данные для Excel
+      window._networkData = { nets: sorted, details: networks, routeName: currentRoute.name };
+    }
+
+    // Скачивание Excel
+    window.downloadExcel = function() {
+      if (!window._networkData) return;
+      const data = window._networkData;
+      const wb = XLSX.utils.book_new();
+      const rows = [
+        ['Коммерческое предложение'],
+        ['Маршрут: ' + data.routeName],
+        ['Дата: ' + new Date().toLocaleDateString()],
+        [],
+        ['Минимальная цена', Math.min(...Object.values(data.details).map(d => d.price)).toFixed(2) + ' ₽/л'],
+        ['Средняя цена', (Object.values(data.details).reduce((sum,d) => sum + d.price, 0) / data.nets.length).toFixed(2) + ' ₽/л'],
+        ['Количество сетей', data.nets.length],
+        [],
+        ['Сеть', 'Мин. цена на маршруте']
+      ];
+      data.nets.forEach(net => {
+        const nd = data.details[net];
+        rows.push([net, nd.price.toFixed(2) + ' ₽/л']);
+      });
+      // Добавляем координаты
+      rows.push([], ['Координаты АЗС'], ['Название', 'Адрес', 'Цена', 'Широта', 'Долгота']);
+      filteredStations.forEach(station => {
+        const price = getPriceForFuel(station, currentFuel);
+        if (price && !price.is_discount) {
+          rows.push([
+            station.name || '',
+            station.address || '',
+            price.price_value,
+            station.lat.toFixed(6),
+            station.lon.toFixed(6)
+          ]);
+        }
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:25},{wch:20},{wch:15},{wch:15},{wch:15}];
+      XLSX.utils.book_append_sheet(wb, ws, 'Маршрут');
+      XLSX.writeFile(wb, 'АЗС_маршрут.xlsx');
+    };
+
+    // Инициализация
     fetch(`${API_URL}?token=${token}`)
       .then(response => {
         if (!response.ok) throw new Error('Network response was not ok');
@@ -178,7 +370,8 @@
       .then(stations => {
         allStations = stations;
         buildFuelButtons();
-        displayStations(allStations);
+        buildRouteButtons();
+        applyFilters(); // по умолчанию Все
       })
       .catch(error => {
         console.error('Error fetching stations:', error);
