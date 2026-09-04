@@ -6,25 +6,56 @@
   <title>Карта АЗС</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; }
+    body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100%; }
-    .popup-price { font-size: 18px; font-weight: bold; color: #1565C0; }
+    .control-panel {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      padding: 10px 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+    .fuel-btn {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .fuel-btn.active {
+      background: #1565C0;
+      color: white;
+      border-color: #1565C0;
+    }
+    .popup-price { font-size: 16px; font-weight: bold; color: #1565C0; }
+    .market-info { font-size: 12px; color: #d32f2f; margin-top: 4px; }
+    .saving-info { font-size: 13px; color: #2e7d32; font-weight: bold; }
   </style>
 </head>
 <body>
+  <div class="control-panel" id="fuel-panel"></div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-
     if (!token) {
       document.body.innerHTML = '<h2 style="text-align:center;margin-top:50px;">Не указан токен</h2>';
       throw new Error('Token missing');
     }
 
-    // URL функции quick-service (замените, если у вас другое имя)
     const API_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1/quick-service';
 
     const map = L.map('map').setView([55.75, 37.62], 10);
@@ -32,64 +63,122 @@
       attribution: 'OSM'
     }).addTo(map);
 
+    let allStations = [];
+    let currentFuel = 'ДТ-Л'; // топливо по умолчанию
+    let markersLayer = L.layerGroup().addTo(map);
+
+    // Создание кнопок фильтра топлива
+    function buildFuelButtons() {
+      const fuels = ['ДТ-Л', 'ДТ-Е', 'ДТ-З', 'Газ'];
+      const container = document.getElementById('fuel-panel');
+      container.innerHTML = '';
+      fuels.forEach(fuel => {
+        const btn = document.createElement('button');
+        btn.className = 'fuel-btn' + (fuel === currentFuel ? ' active' : '');
+        btn.textContent = fuel;
+        btn.dataset.fuel = fuel;
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.fuel-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          currentFuel = this.dataset.fuel;
+          displayStations(allStations);
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    // Получение цены для станции и выбранного топлива
+    function getPriceForFuel(station, fuel) {
+      if (!station.prices || station.prices.length === 0) return null;
+      const price = station.prices.find(p => p.fuel_type === fuel);
+      if (!price) return null;
+      return price;
+    }
+
+    // Определение цвета маркера
+    function getMarkerColor(station, price) {
+      // Если у сети задан color_code 1,2,3, используем его
+      if (station.color_code === 1) return '#43A047';
+      if (station.color_code === 2) return '#FF9800';
+      if (station.color_code === 3) return '#1E88E5';
+
+      // Автоматическое определение
+      if (!price || price.is_discount) return '#1E88E5'; // синий для скидок и газа
+      if (fuel === 'Газ') return '#1E88E5';
+
+      // Для ДТ используем распределение по цене
+      const numericPrice = price.price_value;
+      // здесь нужно определить мин/макс по всем станциям для текущего топлива
+      const validPrices = allStations
+        .map(s => getPriceForFuel(s, currentFuel))
+        .filter(p => p && !p.is_discount && p.price_value > 0)
+        .map(p => p.price_value);
+      if (validPrices.length === 0) return '#1E88E5';
+      const min = Math.min(...validPrices);
+      const max = Math.max(...validPrices);
+      const range = max - min || 1;
+      const ratio = (numericPrice - min) / range;
+      if (ratio < 0.3) return '#43A047';
+      else if (ratio < 0.7) return '#FF9800';
+      else return '#1E88E5';
+    }
+
+    // Отображение станций с учётом фильтра
+    function displayStations(stations) {
+      markersLayer.clearLayers();
+      stations.forEach(station => {
+        if (!station.lat || !station.lon) return;
+        const price = getPriceForFuel(station, currentFuel);
+        const color = getMarkerColor(station, price);
+        const marker = L.circleMarker([station.lat, station.lon], {
+          radius: 8,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 0.9
+        }).addTo(markersLayer);
+
+        let popupContent = `<b>${station.name || 'АЗС'}</b><br>`;
+        popupContent += station.address ? `${station.address}<br>` : '';
+        if (price) {
+          if (price.is_discount) {
+            popupContent += `<div>Скидка: ${price.discount_text || 'уточняйте'}</div>`;
+          } else {
+            popupContent += `<span class="popup-price">${price.price_value} ₽/л</span>`;
+            // Сравнение с рыночной ценой
+            if (station.market_price && !isNaN(station.market_price)) {
+              const market = parseFloat(station.market_price);
+              const diff = market - price.price_value;
+              popupContent += `<div class="market-info">Средняя стела: ${market.toFixed(2)} ₽/л</div>`;
+              if (diff > 0) {
+                popupContent += `<div class="saving-info">Выгода: ${diff.toFixed(2)} ₽/л</div>`;
+              }
+            }
+          }
+        } else {
+          popupContent += `<div>Цена не указана для ${currentFuel}</div>`;
+        }
+        popupContent += station.region ? `Регион: ${station.region}` : '';
+        marker.bindPopup(popupContent);
+      });
+
+      // Подгоняем границы, если есть станции
+      if (stations.length > 0) {
+        const bounds = L.latLngBounds(stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon]));
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+
+    // Загрузка данных
     fetch(`${API_URL}?token=${token}`)
       .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
+        if (!response.ok) throw new Error('Network response was not ok');
         return response.json();
       })
       .then(stations => {
-        if (!Array.isArray(stations)) {
-          throw new Error('Invalid data format');
-        }
-
-        // Отображаем маркеры
-        stations.forEach(station => {
-          if (!station.lat || !station.lon) return;
-
-          // Выбираем цвет на основе color_code (если есть) или по цене
-          let color;
-          if (station.color_code === 1) color = '#43A047';
-          else if (station.color_code === 2) color = '#FF9800';
-          else if (station.color_code === 3) color = '#1E88E5';
-          else {
-            // Автоматическое определение (пока просто синий)
-            color = '#1E88E5';
-          }
-
-          const marker = L.circleMarker([station.lat, station.lon], {
-            radius: 8,
-            fillColor: color,
-            color: '#fff',
-            weight: 2,
-            fillOpacity: 0.9
-          }).addTo(map);
-
-          // Формируем содержимое попапа
-          const priceInfo = station.prices && station.prices.length > 0
-            ? station.prices.map(p => {
-                if (p.is_discount) {
-                  return `${p.fuel_type}: ${p.discount_text || 'Скидка'}`;
-                } else {
-                  return `${p.fuel_type}: ${p.price_value} ₽/л`;
-                }
-              }).join('<br>')
-            : 'Цена не указана';
-
-          marker.bindPopup(`
-            <b>${station.name || 'АЗС'}</b><br>
-            ${station.address || ''}<br>
-            <span class="popup-price">${priceInfo}</span>
-            ${station.region ? `<br>Регион: ${station.region}` : ''}
-          `);
-        });
-
-        // Подгоняем границы под все станции
-        if (stations.length > 0) {
-          const bounds = L.latLngBounds(stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon]));
-          map.fitBounds(bounds, { padding: [50, 50] });
-        }
+        allStations = stations;
+        buildFuelButtons();
+        displayStations(allStations);
       })
       .catch(error => {
         console.error('Error fetching stations:', error);
