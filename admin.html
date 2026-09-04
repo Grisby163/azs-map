@@ -42,6 +42,7 @@
         <span class="tab" onclick="switchTab('priceLists')">Ценовые листы</span>
         <span class="tab" onclick="switchTab('create')">Создать карту</span>
         <span class="tab" onclick="switchTab('import')">Импорт</span>
+        <span class="tab" onclick="switchTab('prices')">Цены</span>
       </div>
 
       <div id="clients" class="tab-content active">
@@ -49,7 +50,15 @@
         <button onclick="loadTokens()">Обновить</button>
         <div id="tokensTable"></div>
       </div>
-
+      <div id="prices" class="tab-content">
+        <h2>Редактирование цен</h2>
+        <div class="form-group">
+        <label>Ценовой лист</label>
+        <select id="priceListForPrices" onchange="loadPricesForEditing()"></select>
+        </div>
+        <button onclick="loadPricesForEditing()">Загрузить цены</button>
+        <div id="pricesTable"></div>
+      </div>
       <div id="networks" class="tab-content">
         <h2>Сети</h2>
         <button onclick="loadNetworks()">Обновить</button>
@@ -120,6 +129,7 @@
       loadPriceListsForForm();
       loadRegions();
       loadTokens();
+      loadPriceListsForPrices();
     }
 
     function saveAdminKey() {
@@ -130,6 +140,7 @@
         loadPriceListsForForm();
         loadRegions();
         loadTokens();
+        loadPriceListsForPrices();
       } else {
         alert('Введите ключ');
       }
@@ -592,6 +603,108 @@ function submitImport() {
   .catch(err => {
     document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
   });
+}
+    // Заполнение выпадающего списка ценовых листов на вкладке "Цены"
+async function loadPriceListsForPrices() {
+  try {
+    const data = await fetchAdmin('price_lists');
+    const select = document.getElementById('priceListForPrices');
+    select.innerHTML = '';
+    if (Array.isArray(data)) {
+      data.forEach(pl => {
+        const opt = document.createElement('option');
+        opt.value = pl.id;
+        opt.textContent = pl.name;
+        select.appendChild(opt);
+      });
+      // Если есть листы, сразу загружаем цены для первого
+      if (data.length > 0) loadPricesForEditing();
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// Загрузка цен для выбранного листа
+async function loadPricesForEditing() {
+  const priceListId = document.getElementById('priceListForPrices').value;
+  if (!priceListId) return;
+
+  try {
+    // Используем прямой fetch, чтобы передать дополнительный параметр
+    const response = await fetch(`${ADMIN_BASE_URL}/admin-data?type=prices_by_list&price_list_id=${priceListId}`, {
+      headers: { 'x-admin-key': adminKey }
+    });
+    if (!response.ok) throw new Error('Ошибка загрузки: ' + response.status);
+    const data = await response.json();
+
+    const container = document.getElementById('pricesTable');
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = '<p>Нет станций или цен</p>';
+      return;
+    }
+
+    let html = '<table><tr><th>Станция</th><th>Сеть</th><th>Регион</th><th>Цена (ДТ-Л)</th><th></th></tr>';
+    data.forEach(item => {
+      const price = item.price;
+      const priceValue = price && !price.is_discount ? price.price_value : '';
+      const isDiscount = price ? price.is_discount : false;
+      const discountText = price ? price.discount_text : '';
+      html += `<tr>
+        <td>${item.name || ''}</td>
+        <td>${item.network || ''}</td>
+        <td>${item.region || ''}</td>
+        <td>
+          <input type="number" step="0.01" id="price_${item.station_id}" value="${priceValue}" ${isDiscount ? 'disabled' : ''}>
+          <label><input type="checkbox" id="discount_${item.station_id}" ${isDiscount ? 'checked' : ''} onchange="toggleDiscount('${item.station_id}')"> Скидка</label>
+          <input type="text" id="discountText_${item.station_id}" value="${discountText}" placeholder="Текст скидки" ${!isDiscount ? 'disabled' : ''}>
+        </td>
+        <td><button onclick="savePrice('${item.station_id}')">Сохранить</button></td>
+      </tr>`;
+    });
+    html += '</table>';
+    container.innerHTML = html;
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+// Переключение режима "скидка"
+function toggleDiscount(stationId) {
+  const isChecked = document.getElementById('discount_' + stationId).checked;
+  document.getElementById('price_' + stationId).disabled = isChecked;
+  document.getElementById('discountText_' + stationId).disabled = !isChecked;
+}
+
+// Сохранение цены для станции
+async function savePrice(stationId) {
+  const priceListId = document.getElementById('priceListForPrices').value;
+  const isDiscount = document.getElementById('discount_' + stationId).checked;
+  const priceValue = isDiscount ? null : parseFloat(document.getElementById('price_' + stationId).value);
+  const discountText = document.getElementById('discountText_' + stationId).value.trim();
+
+  try {
+    const response = await fetch(`${ADMIN_BASE_URL}/admin-update-price`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-key': adminKey
+      },
+      body: JSON.stringify({
+        station_id: stationId,
+        price_list_id: priceListId,
+        fuel_type: 'ДТ-Л',
+        price_value: priceValue,
+        is_discount: isDiscount,
+        discount_text: discountText
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Ошибка сохранения');
+    alert('Цена сохранена');
+  } catch (e) {
+    alert('Ошибка: ' + e.message);
+  }
 }
   </script>
 </body>
