@@ -150,8 +150,12 @@
     }
 
     const API_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1/quick-service';
+    const map = L.map('map').setView([55.75, 37.62], 10);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: 'OSM'
+}).addTo(map);
     let yandexReady = false;
-let ymaps3Route = null;
+    let ymaps3Route = null;
 
 async function initYandexRouter() {
   try {
