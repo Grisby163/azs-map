@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Карта АЗС</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Подключение Яндекс.Карт v3 -->
-  <script src="https://api-maps.yandex.ru/v3/?apikey=75c690e7-405e-408f-850d-f1ef7c24daa2&lang=ru_RU" type="text/javascript"></script>
   <style>
     body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100%; }
@@ -151,8 +149,9 @@
     }
 
     const API_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1/quick-service';
+    const GH_API_KEY = 'a4b49645-1e81-4a2e-a019-741d76b2903c'; // замените при необходимости
 
-    // Инициализация Leaflet карты
+    // Инициализация Leaflet
     const map = L.map('map').setView([55.75, 37.62], 10);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OSM'
@@ -165,27 +164,6 @@
     let routeLine = null;
     let currentRouteActualCoords = null;
     let filteredStations = [];
-
-    // Переменные для Яндекс API 3.0
-    let yandexReady = false;
-    let ymaps3Route = null;
-
-    async function initYandexRouter() {
-      try {
-        await ymaps3.ready;
-        const routerModule = await ymaps3.import('@yandex/ymaps3-router');
-        // Функция маршрута может быть в routerModule.route или routerModule.default.route
-        ymaps3Route = routerModule.route || routerModule.default.route;
-        yandexReady = true;
-        console.log('Yandex router ready');
-      } catch (e) {
-        console.warn('Не удалось загрузить модуль маршрутизации', e);
-      }
-    }
-
-    if (typeof ymaps3 !== 'undefined') {
-      initYandexRouter();
-    }
 
     const highwayRoutes = {
       m10: { name: "Москва – Санкт‑Петербург (М10)", coords: [[37.5634,55.7756],[35.9176,56.8587],[34.9604,57.0411],[33.2486,57.9797],[31.2749,58.5228],[30.5043,59.8066]], radius: 5 },
@@ -351,57 +329,30 @@
 
     async function showRouteOnMap(route) {
       if (routeLine) map.removeLayer(routeLine);
-
       const yandexLinkContainer = document.getElementById('yandex-link-container');
       yandexLinkContainer.style.display = 'none';
 
-      if (!yandexReady || !ymaps3Route) {
-        // Fallback: прямые линии
-        const latlngs = route.coords.map(c => [c[1], c[0]]);
+      try {
+        const points = route.coords.map(c => `point=${c[1]},${c[0]}`).join('&');
+        const url = `https://graphhopper.com/api/1/route?${points}&vehicle=car&locale=ru&key=${GH_API_KEY}&avoid=toll&points_encoded=false`;
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('GraphHopper error');
+        const data = await response.json();
+        if (!data.paths || data.paths.length === 0) throw new Error('No route');
+
+        const coords = data.paths[0].points.coordinates;
+        const latlngs = coords.map(c => [c[1], c[0]]);
         routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
         currentRouteActualCoords = latlngs;
-        return;
-      }
 
-      try {
-        // Точки для Яндекса: массив [lat, lon]
-        const points = route.coords.map(c => [c[1], c[0]]);
-
-        // Вызов маршрутизации (формат может отличаться)
-        const result = await ymaps3Route({
-          points: points,
-          avoidTolls: true,
-          routingMode: 'auto'
-        });
-
-        let coords = [];
-        if (result && result.routes && result.routes.length > 0) {
-          const routeObj = result.routes[0];
-          if (routeObj.geometry && routeObj.geometry.coordinates) {
-            coords = routeObj.geometry.coordinates.map(c => [c[1], c[0]]);
-          } else if (routeObj.paths && routeObj.paths.length > 0) {
-            coords = routeObj.paths[0].map(c => [c[1], c[0]]);
-          } else if (Array.isArray(routeObj)) {
-            coords = routeObj.map(c => [c[1], c[0]]);
-          }
-        } else if (result && result.coordinates) {
-          coords = result.coordinates.map(c => [c[1], c[0]]);
-        } else if (Array.isArray(result)) {
-          coords = result.map(c => [c[1], c[0]]);
-        }
-
-        if (coords.length === 0) throw new Error('Не удалось получить геометрию маршрута');
-
-        routeLine = L.polyline(coords, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-        currentRouteActualCoords = coords;
-
-        // Формируем URL для Яндекс.Карт
-        const yandexUrl = buildYandexMapUrl(points);
+        // Формируем URL для Яндекс.Карт (по желанию)
+        const yandexUrl = buildYandexMapUrl(route.coords.map(c => [c[1], c[0]]));
         const link = document.getElementById('yandex-link');
         link.href = yandexUrl;
         yandexLinkContainer.style.display = 'block';
       } catch (e) {
-        console.warn('Yandex routing failed, fallback to straight lines', e);
+        console.warn('GraphHopper failed, fallback to straight lines', e);
         const latlngs = route.coords.map(c => [c[1], c[0]]);
         routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
         currentRouteActualCoords = latlngs;
