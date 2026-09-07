@@ -151,17 +151,22 @@
 
     const API_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1/quick-service';
     let yandexReady = false;
-    let ymaps3Router = null; // сюда сохраним функцию маршрутизации
+let ymaps3Route = null;
 
-    if (typeof ymaps3 !== 'undefined') {
-      ymaps3.ready.then(() => {
-      ymaps3.import('@yandex/ymaps3-router').then(module => {
-      ymaps3Router = module.route; // или module.default.route, если иначе
-      yandexReady = true;
-    }).catch(err => {
-      console.warn('Не удалось загрузить модуль маршрутизации', err);
-    });
-  });
+async function initYandexRouter() {
+  try {
+    await ymaps3.ready;
+    const routerModule = await ymaps3.import('@yandex/ymaps3-router');
+    // В зависимости от версии пакета функция может быть в routerModule.route или routerModule.default.route
+    ymaps3Route = routerModule.route || routerModule.default.route;
+    yandexReady = true;
+  } catch (e) {
+    console.warn('Не удалось загрузить модуль маршрутизации', e);
+  }
+}
+
+if (typeof ymaps3 !== 'undefined') {
+  initYandexRouter();
 }
 
     let allStations = [];
@@ -333,61 +338,67 @@
       }
     }
 
-            async function showRouteOnMap(route) {
-      if (routeLine) map.removeLayer(routeLine);
+        async function showRouteOnMap(route) {
+  if (routeLine) map.removeLayer(routeLine);
 
-      // Скрываем кнопку Яндекс.Карт, пока не построим маршрут
-      document.getElementById('yandex-link-container').style.display = 'none';
+  document.getElementById('yandex-link-container').style.display = 'none';
 
-      // Если Яндекс.API не готов, рисуем прямые линии
-      if (!yandexReady || !ymaps3Router) {
-        const latlngs = route.coords.map(c => [c[1], c[0]]);
-        routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-        currentRouteActualCoords = latlngs;
-        return;
+  if (!yandexReady || !ymaps3Route) {
+    // Fallback: прямые линии
+    const latlngs = route.coords.map(c => [c[1], c[0]]);
+    routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+    currentRouteActualCoords = latlngs;
+    return;
+  }
+
+  try {
+    // Точки маршрута: массив [lat, lon]
+    const points = route.coords.map(c => [c[1], c[0]]);
+
+    // Вызываем маршрутизацию
+    const result = await ymaps3Route({
+      points: points,
+      avoidTolls: true,        // избегать платных дорог
+      // Дополнительные опции можно уточнить в документации
+    });
+
+    // Извлекаем координаты маршрута (возможные форматы)
+    let coords = [];
+    if (result && result.routes && result.routes.length > 0) {
+      // Пробуем разные структуры
+      const routeObj = result.routes[0];
+      if (routeObj.geometry && routeObj.geometry.coordinates) {
+        coords = routeObj.geometry.coordinates.map(c => [c[1], c[0]]);
+      } else if (routeObj.paths && routeObj.paths.length > 0) {
+        coords = routeObj.paths[0].map(c => [c[1], c[0]]);
+      } else if (Array.isArray(routeObj)) {
+        coords = routeObj.map(c => [c[1], c[0]]);
       }
-
-      try {
-        // Точки для Яндекса: массив [lat, lon]
-        const points = route.coords.map(c => [c[1], c[0]]);
-
-        // Параметры маршрута (предполагаемый формат, может отличаться)
-        const routeOptions = {
-          avoidTolls: true,
-          // другие опции, если поддерживаются
-        };
-
-        // Вызываем маршрутизацию
-        const result = await ymaps3Router(points, routeOptions);
-        // result может быть объектом с координатами маршрута
-        // Предположим, что result содержит массив координат [ [lat, lon], ... ]
-
-        let coords;
-        if (Array.isArray(result)) {
-          coords = result;
-        } else if (result && result.coordinates) {
-          coords = result.coordinates.map(c => [c[1], c[0]]); // возможно наоборот
-        } else {
-          throw new Error('Не удалось получить геометрию маршрута');
-        }
-
-        routeLine = L.polyline(coords, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-        currentRouteActualCoords = coords;
-
-        // Формируем URL для Яндекс.Карт и показываем кнопку
-        const yandexUrl = buildYandexMapUrl(points);
-        const linkContainer = document.getElementById('yandex-link-container');
-        const link = document.getElementById('yandex-link');
-        link.href = yandexUrl;
-        linkContainer.style.display = 'block';
-      } catch (e) {
-        console.warn('Yandex routing failed, fallback to straight lines', e);
-        const latlngs = route.coords.map(c => [c[1], c[0]]);
-        routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-        currentRouteActualCoords = latlngs;
-        document.getElementById('yandex-link-container').style.display = 'none';
-      }
+    } else if (result && result.coordinates) {
+      coords = result.coordinates.map(c => [c[1], c[0]]);
+    } else if (Array.isArray(result)) {
+      coords = result.map(c => [c[1], c[0]]);
     }
+
+    if (coords.length === 0) throw new Error('Не удалось получить геометрию маршрута');
+
+    routeLine = L.polyline(coords, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+    currentRouteActualCoords = coords;
+
+    // Формируем URL для Яндекс.Карт
+    const yandexUrl = buildYandexMapUrl(points);
+    const linkContainer = document.getElementById('yandex-link-container');
+    const link = document.getElementById('yandex-link');
+    link.href = yandexUrl;
+    linkContainer.style.display = 'block';
+  } catch (e) {
+    console.warn('Yandex routing failed, fallback to straight lines', e);
+    const latlngs = route.coords.map(c => [c[1], c[0]]);
+    routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+    currentRouteActualCoords = latlngs;
+    document.getElementById('yandex-link-container').style.display = 'none';
+  }
+}
         function buildYandexMapUrl(points) {
       // points: массив [lat, lon]
       const coordsStr = points.map(p => `${p[1]},${p[0]}`).join('~'); // lon,lat через ~
