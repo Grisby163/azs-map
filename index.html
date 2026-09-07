@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Карта АЗС</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Яндекс.Карты 2.1 -->
-  <script src="https://api-maps.yandex.ru/2.1/?apikey=75c690e7-405e-408f-850d-f1ef7c24daa2&lang=ru_RU" type="text/javascript"></script>
+  <!-- Подключение Яндекс.Карт v3 -->
+  <script src="https://api-maps.yandex.ru/v3/?apikey=75c690e7-405e-408f-850d-f1ef7c24daa2&lang=ru_RU" type="text/javascript"></script>
   <style>
     body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100%; }
@@ -166,13 +166,25 @@
     let currentRouteActualCoords = null;
     let filteredStations = [];
 
-    // Переменная готовности Яндекс.Карт 2.1
+    // Переменные для Яндекс API 3.0
     let yandexReady = false;
-    if (typeof ymaps !== 'undefined') {
-      ymaps.ready(() => {
+    let ymaps3Route = null;
+
+    async function initYandexRouter() {
+      try {
+        await ymaps3.ready;
+        const routerModule = await ymaps3.import('@yandex/ymaps3-router');
+        // Функция маршрута может быть в routerModule.route или routerModule.default.route
+        ymaps3Route = routerModule.route || routerModule.default.route;
         yandexReady = true;
-        console.log('Yandex Maps 2.1 ready');
-      });
+        console.log('Yandex router ready');
+      } catch (e) {
+        console.warn('Не удалось загрузить модуль маршрутизации', e);
+      }
+    }
+
+    if (typeof ymaps3 !== 'undefined') {
+      initYandexRouter();
     }
 
     const highwayRoutes = {
@@ -343,7 +355,7 @@
       const yandexLinkContainer = document.getElementById('yandex-link-container');
       yandexLinkContainer.style.display = 'none';
 
-      if (!yandexReady) {
+      if (!yandexReady || !ymaps3Route) {
         // Fallback: прямые линии
         const latlngs = route.coords.map(c => [c[1], c[0]]);
         routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
@@ -352,29 +364,38 @@
       }
 
       try {
-        const points = route.coords.map(c => [c[1], c[0]]); // [lat, lon]
+        // Точки для Яндекса: массив [lat, lon]
+        const points = route.coords.map(c => [c[1], c[0]]);
 
-        const multiRoute = await ymaps.route(points, {
-          mapStateAutoApply: false,
-          avoidTrafficJams: true,
-          routingMode: 'auto',
-          avoidTolls: true
+        // Вызов маршрутизации (формат может отличаться)
+        const result = await ymaps3Route({
+          points: points,
+          avoidTolls: true,
+          routingMode: 'auto'
         });
 
-        const routes = multiRoute.getRoutes();
-        if (!routes || routes.length === 0) throw new Error('No Yandex route');
+        let coords = [];
+        if (result && result.routes && result.routes.length > 0) {
+          const routeObj = result.routes[0];
+          if (routeObj.geometry && routeObj.geometry.coordinates) {
+            coords = routeObj.geometry.coordinates.map(c => [c[1], c[0]]);
+          } else if (routeObj.paths && routeObj.paths.length > 0) {
+            coords = routeObj.paths[0].map(c => [c[1], c[0]]);
+          } else if (Array.isArray(routeObj)) {
+            coords = routeObj.map(c => [c[1], c[0]]);
+          }
+        } else if (result && result.coordinates) {
+          coords = result.coordinates.map(c => [c[1], c[0]]);
+        } else if (Array.isArray(result)) {
+          coords = result.map(c => [c[1], c[0]]);
+        }
 
-        const path = routes[0].getPaths()[0];
-        const segments = path.getSegments();
-        const coords = [];
-        segments.forEach(segment => {
-          segment.getCoordinates().forEach(c => coords.push([c[0], c[1]]));
-        });
+        if (coords.length === 0) throw new Error('Не удалось получить геометрию маршрута');
 
         routeLine = L.polyline(coords, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
         currentRouteActualCoords = coords;
 
-        // Формируем URL для Яндекс.Карт и показываем кнопку
+        // Формируем URL для Яндекс.Карт
         const yandexUrl = buildYandexMapUrl(points);
         const link = document.getElementById('yandex-link');
         link.href = yandexUrl;
