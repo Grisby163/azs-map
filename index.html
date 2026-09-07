@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Карта АЗС</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://api-maps.yandex.ru/v3/?apikey=75c690e7-405e-408f-850d-f1ef7c24daa2&lang=ru_RU&load=package.router" type="text/javascript"></script>
+  <!-- Яндекс.Карты 2.1 -->
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=75c690e7-405e-408f-850d-f1ef7c24daa2&lang=ru_RU" type="text/javascript"></script>
   <style>
     body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100%; }
@@ -125,7 +126,7 @@
     <div class="network-list" id="network-list"></div>
     <button class="download-btn" onclick="downloadExcel()">📥 Скачать Excel</button>
   </div>
-    <div id="yandex-link-container" style="display:none; position:absolute; bottom: 10px; left: 10px; z-index: 1000;">
+  <div id="yandex-link-container" style="display:none; position:absolute; bottom: 10px; left: 10px; z-index: 1000;">
     <a id="yandex-link" href="#" target="_blank" style="background: #fff; padding: 8px 12px; border-radius: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); text-decoration: none; color: #000;">Открыть в Яндекс.Картах</a>
   </div>
   <div id="greeting-overlay" class="greeting-overlay" style="display:none;">
@@ -150,28 +151,12 @@
     }
 
     const API_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1/quick-service';
+
+    // Инициализация Leaflet карты
     const map = L.map('map').setView([55.75, 37.62], 10);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: 'OSM'
-}).addTo(map);
-    let yandexReady = false;
-    let ymaps3Route = null;
-
-async function initYandexRouter() {
-  try {
-    await ymaps3.ready;
-    const routerModule = await ymaps3.import('@yandex/ymaps3-router');
-    // В зависимости от версии пакета функция может быть в routerModule.route или routerModule.default.route
-    ymaps3Route = routerModule.route || routerModule.default.route;
-    yandexReady = true;
-  } catch (e) {
-    console.warn('Не удалось загрузить модуль маршрутизации', e);
-  }
-}
-
-if (typeof ymaps3 !== 'undefined') {
-  initYandexRouter();
-}
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'OSM'
+    }).addTo(map);
 
     let allStations = [];
     let currentFuel = 'ДТ-Л';
@@ -180,6 +165,15 @@ if (typeof ymaps3 !== 'undefined') {
     let routeLine = null;
     let currentRouteActualCoords = null;
     let filteredStations = [];
+
+    // Переменная готовности Яндекс.Карт 2.1
+    let yandexReady = false;
+    if (typeof ymaps !== 'undefined') {
+      ymaps.ready(() => {
+        yandexReady = true;
+        console.log('Yandex Maps 2.1 ready');
+      });
+    }
 
     const highwayRoutes = {
       m10: { name: "Москва – Санкт‑Петербург (М10)", coords: [[37.5634,55.7756],[35.9176,56.8587],[34.9604,57.0411],[33.2486,57.9797],[31.2749,58.5228],[30.5043,59.8066]], radius: 5 },
@@ -214,11 +208,12 @@ if (typeof ymaps3 !== 'undefined') {
       allBtn.className = 'route-btn active';
       allBtn.textContent = 'Все';
       allBtn.dataset.route = '';
-        allBtn.addEventListener('click', function() {
+      allBtn.addEventListener('click', function() {
         document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         currentRoute = null;
         currentRouteActualCoords = null;
+        document.getElementById('yandex-link-container').style.display = 'none';
         applyFilters();
       });
       container.appendChild(allBtn);
@@ -265,7 +260,7 @@ if (typeof ymaps3 !== 'undefined') {
       else return '#1E88E5';
     }
 
-            async function applyFilters() {
+    async function applyFilters() {
       let stations = allStations;
 
       if (currentRoute) {
@@ -289,7 +284,7 @@ if (typeof ymaps3 !== 'undefined') {
       if (currentRoute) {
         updateNetworkPanel(stations);
         document.getElementById('network-panel').style.display = 'block';
-            } else {
+      } else {
         if (routeLine) {
           map.removeLayer(routeLine);
           routeLine = null;
@@ -342,72 +337,62 @@ if (typeof ymaps3 !== 'undefined') {
       }
     }
 
-        async function showRouteOnMap(route) {
-  if (routeLine) map.removeLayer(routeLine);
+    async function showRouteOnMap(route) {
+      if (routeLine) map.removeLayer(routeLine);
 
-  document.getElementById('yandex-link-container').style.display = 'none';
+      const yandexLinkContainer = document.getElementById('yandex-link-container');
+      yandexLinkContainer.style.display = 'none';
 
-  if (!yandexReady || !ymaps3Route) {
-    // Fallback: прямые линии
-    const latlngs = route.coords.map(c => [c[1], c[0]]);
-    routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-    currentRouteActualCoords = latlngs;
-    return;
-  }
-
-  try {
-    // Точки маршрута: массив [lat, lon]
-    const points = route.coords.map(c => [c[1], c[0]]);
-
-    // Вызываем маршрутизацию
-    const result = await ymaps3Route({
-      points: points,
-      avoidTolls: true,        // избегать платных дорог
-      // Дополнительные опции можно уточнить в документации
-    });
-
-    // Извлекаем координаты маршрута (возможные форматы)
-    let coords = [];
-    if (result && result.routes && result.routes.length > 0) {
-      // Пробуем разные структуры
-      const routeObj = result.routes[0];
-      if (routeObj.geometry && routeObj.geometry.coordinates) {
-        coords = routeObj.geometry.coordinates.map(c => [c[1], c[0]]);
-      } else if (routeObj.paths && routeObj.paths.length > 0) {
-        coords = routeObj.paths[0].map(c => [c[1], c[0]]);
-      } else if (Array.isArray(routeObj)) {
-        coords = routeObj.map(c => [c[1], c[0]]);
+      if (!yandexReady) {
+        // Fallback: прямые линии
+        const latlngs = route.coords.map(c => [c[1], c[0]]);
+        routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+        currentRouteActualCoords = latlngs;
+        return;
       }
-    } else if (result && result.coordinates) {
-      coords = result.coordinates.map(c => [c[1], c[0]]);
-    } else if (Array.isArray(result)) {
-      coords = result.map(c => [c[1], c[0]]);
+
+      try {
+        const points = route.coords.map(c => [c[1], c[0]]); // [lat, lon]
+
+        const multiRoute = await ymaps.route(points, {
+          mapStateAutoApply: false,
+          avoidTrafficJams: true,
+          routingMode: 'auto',
+          avoidTolls: true
+        });
+
+        const routes = multiRoute.getRoutes();
+        if (!routes || routes.length === 0) throw new Error('No Yandex route');
+
+        const path = routes[0].getPaths()[0];
+        const segments = path.getSegments();
+        const coords = [];
+        segments.forEach(segment => {
+          segment.getCoordinates().forEach(c => coords.push([c[0], c[1]]));
+        });
+
+        routeLine = L.polyline(coords, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+        currentRouteActualCoords = coords;
+
+        // Формируем URL для Яндекс.Карт и показываем кнопку
+        const yandexUrl = buildYandexMapUrl(points);
+        const link = document.getElementById('yandex-link');
+        link.href = yandexUrl;
+        yandexLinkContainer.style.display = 'block';
+      } catch (e) {
+        console.warn('Yandex routing failed, fallback to straight lines', e);
+        const latlngs = route.coords.map(c => [c[1], c[0]]);
+        routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
+        currentRouteActualCoords = latlngs;
+        yandexLinkContainer.style.display = 'none';
+      }
     }
 
-    if (coords.length === 0) throw new Error('Не удалось получить геометрию маршрута');
-
-    routeLine = L.polyline(coords, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-    currentRouteActualCoords = coords;
-
-    // Формируем URL для Яндекс.Карт
-    const yandexUrl = buildYandexMapUrl(points);
-    const linkContainer = document.getElementById('yandex-link-container');
-    const link = document.getElementById('yandex-link');
-    link.href = yandexUrl;
-    linkContainer.style.display = 'block';
-  } catch (e) {
-    console.warn('Yandex routing failed, fallback to straight lines', e);
-    const latlngs = route.coords.map(c => [c[1], c[0]]);
-    routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-    currentRouteActualCoords = latlngs;
-    document.getElementById('yandex-link-container').style.display = 'none';
-  }
-}
-        function buildYandexMapUrl(points) {
-      // points: массив [lat, lon]
-      const coordsStr = points.map(p => `${p[1]},${p[0]}`).join('~'); // lon,lat через ~
+    function buildYandexMapUrl(points) {
+      const coordsStr = points.map(p => `${p[1]},${p[0]}`).join('~');
       return `https://yandex.ru/maps/?rtext=${coordsStr}&rtt=auto`;
     }
+
     function updateNetworkPanel(stations) {
       const networks = {};
       stations.forEach(station => {
@@ -517,14 +502,13 @@ if (typeof ymaps3 !== 'undefined') {
       return msg;
     }
 
-    // ЗАГРУЗКА ДАННЫХ
-        fetch(`${API_URL}?token=${token}`)
+    // Загрузка данных
+    fetch(`${API_URL}?token=${token}`)
       .then(response => {
         if (!response.ok) throw new Error('Network response was not ok');
         return response.json();
       })
       .then(data => {
-        // Новый формат: { stations: [...], meta: { area, show_greeting } }
         if (data.stations) {
           allStations = data.stations;
           const meta = data.meta || {};
@@ -535,7 +519,6 @@ if (typeof ymaps3 !== 'undefined') {
           applyFilters();
           showGreeting(area, showGreetingFlag);
         } else {
-          // Старый формат (на случай, если quick-service не обновлён)
           allStations = data;
           buildFuelButtons();
           buildRouteButtons();
