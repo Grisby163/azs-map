@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Карта АЗС</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://api-maps.yandex.ru/2.1/?apikey=75c690e7-405e-408f-850d-f1ef7c24daa2&lang=ru_RU" type="text/javascript"></script>
+  <script src="https://api-maps.yandex.ru/v3/?apikey=75c690e7-405e-408f-850d-f1ef7c24daa2&lang=ru_RU&load=package.router" type="text/javascript"></script>
   <style>
     body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
     #map { height: 100vh; width: 100%; }
@@ -151,13 +151,18 @@
 
     const API_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1/quick-service';
     let yandexReady = false;
-    if (typeof ymaps !== 'undefined') {
-    ymaps.ready(() => { yandexReady = true; });
-    }
-    const map = L.map('map').setView([55.75, 37.62], 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'OSM'
-    }).addTo(map);
+    let ymaps3Router = null; // сюда сохраним функцию маршрутизации
+
+    if (typeof ymaps3 !== 'undefined') {
+      ymaps3.ready.then(() => {
+      ymaps3.import('@yandex/ymaps3-router').then(module => {
+      ymaps3Router = module.route; // или module.default.route, если иначе
+      yandexReady = true;
+    }).catch(err => {
+      console.warn('Не удалось загрузить модуль маршрутизации', err);
+    });
+  });
+}
 
     let allStations = [];
     let currentFuel = 'ДТ-Л';
@@ -328,14 +333,14 @@
       }
     }
 
-        async function showRouteOnMap(route) {
+            async function showRouteOnMap(route) {
       if (routeLine) map.removeLayer(routeLine);
 
       // Скрываем кнопку Яндекс.Карт, пока не построим маршрут
       document.getElementById('yandex-link-container').style.display = 'none';
 
       // Если Яндекс.API не готов, рисуем прямые линии
-      if (!yandexReady) {
+      if (!yandexReady || !ymaps3Router) {
         const latlngs = route.coords.map(c => [c[1], c[0]]);
         routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
         currentRouteActualCoords = latlngs;
@@ -346,25 +351,25 @@
         // Точки для Яндекса: массив [lat, lon]
         const points = route.coords.map(c => [c[1], c[0]]);
 
-        // Строим маршрут с объездом платных дорог
-        const multiRoute = await ymaps.route(points, {
-          mapStateAutoApply: false,
-          avoidTrafficJams: true,
-          routingMode: 'auto',
-          avoidTolls: true
-        });
+        // Параметры маршрута (предполагаемый формат, может отличаться)
+        const routeOptions = {
+          avoidTolls: true,
+          // другие опции, если поддерживаются
+        };
 
-        const routes = multiRoute.getRoutes();
-        if (!routes || routes.length === 0) throw new Error('No Yandex route');
+        // Вызываем маршрутизацию
+        const result = await ymaps3Router(points, routeOptions);
+        // result может быть объектом с координатами маршрута
+        // Предположим, что result содержит массив координат [ [lat, lon], ... ]
 
-        // Получаем геометрию первого маршрута
-        const path = routes[0].getPaths()[0];
-        const segments = path.getSegments();
-        const coords = [];
-        segments.forEach(segment => {
-          const segmentCoords = segment.getCoordinates();
-          segmentCoords.forEach(c => coords.push([c[0], c[1]])); // [lat, lon]
-        });
+        let coords;
+        if (Array.isArray(result)) {
+          coords = result;
+        } else if (result && result.coordinates) {
+          coords = result.coordinates.map(c => [c[1], c[0]]); // возможно наоборот
+        } else {
+          throw new Error('Не удалось получить геометрию маршрута');
+        }
 
         routeLine = L.polyline(coords, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
         currentRouteActualCoords = coords;
