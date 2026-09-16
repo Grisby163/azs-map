@@ -689,9 +689,150 @@
       }
     });
 
-    // ---------- Заглушка: создание карты (шаг 9.4) ----------
-    function createCard() {
-      setStatus('Создание карты будет добавлено в шаге 9.4.', '');
+        // ============================================================
+    // Шаг 9.4. Создание карты через quick-function
+    // ============================================================
+
+    async function createCard() {
+      // ---------- 1. Собираем и валидируем данные ----------
+      const clientName = document.getElementById('clientName').value.trim();
+      const priceListId = document.getElementById('priceListSelect').value;
+      const area = document.getElementById('areaSelect').value;
+      const showGreeting = document.getElementById('showGreeting').value === 'true';
+      const mapTitle = document.getElementById('mapTitle').value.trim();
+      const radiusKm = parseFloat(document.getElementById('radiusKm').value) || 5;
+
+      if (!clientName) {
+        setStatus('Введите имя клиента.', 'error');
+        return;
+      }
+      if (!priceListId) {
+        setStatus('Выберите ценовой лист.', 'error');
+        return;
+      }
+
+      // Отмеченные сети.
+      const selectedNetworkIds = getSelectedNetworkIds();
+
+      // Если маршрут построен — берём станции вдоль него, отфильтрованные
+      // по выбранным сетям (если сети отмечены).
+      let visibleStationIds = [];
+      let visibleNetworks = [];
+
+      if (routeGeojson && stationsOnRoute.length > 0) {
+        // Маршрут есть: передаём конкретные станции.
+        let stationsToSend = stationsOnRoute;
+        if (selectedNetworkIds.length > 0) {
+          stationsToSend = stationsOnRoute.filter(s =>
+            selectedNetworkIds.includes(s.network_id)
+          );
+        }
+        visibleStationIds = stationsToSend.map(s => s.id);
+
+        if (visibleStationIds.length === 0) {
+          setStatus('На маршруте нет станций выбранных сетей. Снимите фильтр или измените маршрут.', 'error');
+          return;
+        }
+      } else {
+        // Маршрута нет: передаём сети. Если сети не отмечены — все станции.
+        visibleNetworks = selectedNetworkIds;
+      }
+
+      setStatus('Создание карты...', '');
+      document.getElementById('createCardBtn').disabled = true;
+      document.getElementById('result').style.display = 'none';
+
+      try {
+        // ---------- 2. Формируем payload ----------
+        const payload = {
+          client_name: clientName,
+          price_list_id: priceListId,
+          area: area,
+          show_greeting: showGreeting,
+          visible_networks: visibleNetworks,
+          visible_station_ids: visibleStationIds,
+          route_geojson: routeGeojson,
+          radius_km: radiusKm,
+          map_title: mapTitle || null,
+          map_settings: {}
+        };
+
+        // ---------- 3. Отправляем в quick-function ----------
+        const response = await fetch(`${ADMIN_BASE_URL}/quick-function`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Не удалось создать карту');
+        }
+
+        // ---------- 4. Показываем результат ----------
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `
+          <p style="margin:0 0 8px; font-weight:bold; color:#1b5e20;">Карта создана!</p>
+          <p style="margin:4px 0;">Короткая ссылка:</p>
+          <p style="margin:4px 0;">
+            <a href="${result.short_url}" target="_blank">${result.short_url}</a>
+          </p>
+          <p style="margin:10px 0 4px;">
+            <button onclick="copyToClipboard('${result.short_url}')" class="secondary" style="font-size:12px; padding:5px 10px;">
+              Скопировать ссылку
+            </button>
+            <button onclick="window.open('${result.long_url}', '_blank')" class="secondary" style="font-size:12px; padding:5px 10px;">
+              Открыть карту
+            </button>
+          </p>
+          <p style="margin:8px 0 0; font-size:11px; color:#666;">
+            Токен: ${result.token}<br>
+            Действует до: ${new Date(result.expires_at).toLocaleString('ru-RU')}
+          </p>
+        `;
+
+        // Технические детали — во вкладку details.
+        const tech = document.getElementById('techDetails');
+        tech.textContent = JSON.stringify({
+          payload,
+          response: result
+        }, null, 2);
+
+        setStatus('Карта успешно создана. Ссылку можно отправлять клиенту.', 'success');
+
+      } catch (e) {
+        setStatus('Ошибка: ' + e.message, 'error');
+      } finally {
+        document.getElementById('createCardBtn').disabled = false;
+      }
+    }
+
+    // ---------- Копирование в буфер обмена ----------
+    function copyToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => setStatus('Ссылка скопирована в буфер обмена.', 'success'))
+          .catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        setStatus('Ссылка скопирована в буфер обмена.', 'success');
+      } catch (e) {
+        setStatus('Не удалось скопировать. Скопируйте вручную.', 'error');
+      }
+      document.body.removeChild(ta);
     }
   </script>
 </body>
