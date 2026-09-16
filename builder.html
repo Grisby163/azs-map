@@ -373,21 +373,240 @@
       btn.disabled = routePoints.length < 2;
     }
 
-    // ---------- Заглушки (заполним в 9.3) ----------
+        // ============================================================
+    // Шаг 9.3. Маршрут через OSRM, фильтрация станций, цены
+    // ============================================================
+
+    // Кэш цен: { station_id: { price_value, is_discount, discount_text } }
+    // Заполняется при загрузке цен для выбранного листа.
+    let pricesCache = {};
+
+    // ---------- Клики по карте ----------
+    map.on('click', function (e) {
+      // Если ключ не введён — игнорируем клики.
+      if (!adminKey || document.getElementById('authSection').style.display === 'none') {
+        return;
+      }
+      addRoutePoint(e.latlng);
+    });
+
+    function addRoutePoint(latlng) {
+      // Рисуем круглую точку-маркер на карте.
+      const marker = L.circleMarker(latlng, {
+        radius: 7,
+        fillColor: '#1565C0',
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 1
+      }).addTo(map);
+
+      // Порядковый номер точки — подписываем.
+      const num = routePoints.length + 1;
+      marker.bindTooltip(`${num}`, {
+        permanent: true,
+        direction: 'center',
+        className: 'route-point-label'
+      });
+
+      routePoints.push({ lat: latlng.lat, lng: latlng.lng, marker });
+      updateBuildButtonState();
+
+      const n = routePoints.length;
+      if (n === 1) {
+        setStatus('Начальная точка задана. Кликните конечную.', '');
+      } else if (n === 2) {
+        setStatus('Конечная точка задана. Нажмите «Построить маршрут».', '');
+      } else {
+        setStatus(`Точек: ${n}. Промежуточные будут учтены при построении.`, '');
+      }
+    }
+
+    // ---------- Сброс точек маршрута ----------
     function clearRoutePoints() {
       routePoints.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
       routePoints = [];
       routeGeojson = null;
+      stationsOnRoute = [];
       if (routeLineLayer) { map.removeLayer(routeLineLayer); routeLineLayer = null; }
       document.getElementById('routeInfo').textContent = '';
+      // Возвращаем на карту все станции (без фильтра).
+      drawStations(allStations);
       updateBuildButtonState();
       setStatus('Точки маршрута сброшены.', '');
     }
 
-    function buildRoute() {
-      setStatus('Построение маршрута будет добавлено в шаге 9.3.', '');
+    // ---------- Построение маршрута ----------
+    async function buildRoute() {
+      if (routePoints.length < 2) {
+        setStatus('Нужно минимум 2 точки.', 'error');
+        return;
+      }
+
+      setStatus('Построение маршрута...', '');
+      document.getElementById('buildRouteBtn').disabled = true;
+
+      try {
+        // Координаты в формате [lon, lat] — как ждёт OSRM и GeoJSON.
+        const coordinates = routePoints.map(p => [p.lng, p.lat]);
+
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-build-route`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': adminKey
+          },
+          body: JSON.stringify({ coordinates })
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Не удалось построить маршрут');
+        }
+
+        routeGeojson = result.route_geojson;
+
+        // Рисуем линию маршрута на карте.
+        if (routeLineLayer) map.removeLayer(routeLineLayer);
+        // route_geojson.coordinates — [lon, lat], Leaflet ждёт [lat, lon].
+        const latlngs = routeGeojson.coordinates.map(c => [c[1], c[0]]);
+        routeLineLayer = L.polyline(latlngs, {
+          color: '#1565C0',
+          weight: 5,
+          opacity: 0.85
+        }).addTo(map);
+
+        // Подгоняем карту под маршрут.
+        map.fitBounds(routeLineLayer.getBounds(), { padding: [50, 50] });
+
+        // Информация о маршруте.
+        const km = (result.distance_m / 1000).toFixed(1);
+        const min = Math.round(result.duration_s / 60);
+        document.getElementById('routeInfo').textContent =
+          `Маршрут: ${km} км, ~${min} мин.`;
+
+        // Фильтруем станции вдоль маршрута.
+        filterStationsOnRoute();
+
+        // Подгружаем цены для выбранного ценового листа.
+        await loadPricesForSelectedList();
+
+        // Перерисовываем только станции вдоль маршрута, с ценами.
+        drawStationsWithPrices(stationsOnRoute);
+
+        setStatus(`На маршруте найдено станций: ${stationsOnRoute.length}. Отметьте сети и создайте карту.`, 'success');
+      } catch (e) {
+        setStatus('Ошибка: ' + e.message, 'error');
+      } finally {
+        document.getElementById('buildRouteBtn').disabled = false;
+      }
     }
 
+    // ---------- Фильтрация станций вдоль маршрута ----------
+    function filterStationsOnRoute() {
+      if (!routeGeojson) {
+        stationsOnRoute = allStations;
+        return;
+      }
+      const radiusKm = parseFloat(document.getElementById('radiusKm').value) || 5;
+      const line = turf.lineString(routeGeojson.coordinates);
+
+      stationsOnRoute = allStations.filter(station => {
+        if (!station.lat || !station.lon) return false;
+        try {
+          const dist = turf.pointToLineDistance(
+            turf.point([station.lon, station.lat]),
+            line,
+            { units: 'kilometers' }
+          );
+          return dist <= radiusKm;
+        } catch (e) {
+          return false;
+        }
+      });
+    }
+
+    // ---------- Загрузка цен для выбранного ценового листа ----------
+    async function loadPricesForSelectedList() {
+      const priceListId = document.getElementById('priceListSelect').value;
+      if (!priceListId) {
+        pricesCache = {};
+        return;
+      }
+      try {
+        const data = await fetchAdmin('prices_by_list', `price_list_id=${priceListId}`);
+        pricesCache = {};
+        if (Array.isArray(data)) {
+          data.forEach(item => {
+            // Берём только ДТ-Л — как в клиентской карте по умолчанию.
+            // Если позже добавим переключатель топлива — расширим здесь.
+            if (item.price && item.station_id) {
+              pricesCache[item.station_id] = item.price;
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Не удалось загрузить цены:', e.message);
+        pricesCache = {};
+      }
+    }
+
+    // ---------- Отрисовка станций с ценами ----------
+    function drawStationsWithPrices(stations) {
+      if (stationsLayer) map.removeLayer(stationsLayer);
+      stationsLayer = L.layerGroup().addTo(map);
+
+      stations.forEach(station => {
+        if (!station.lat || !station.lon) return;
+
+        const color = colorForNetwork(station.networks);
+        const marker = L.circleMarker([station.lat, station.lon], {
+          radius: 7,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 0.9
+        });
+
+        let popup = `<b>${station.name || 'АЗС'}</b><br>`;
+        if (station.networks && station.networks.name) {
+          popup += `Сеть: ${station.networks.name}<br>`;
+        }
+        if (station.address) popup += `${station.address}<br>`;
+
+        const price = pricesCache[station.id];
+        if (price) {
+          if (price.is_discount) {
+            popup += `<div style="color:#d32f2f;font-weight:bold;">Скидка: ${price.discount_text || 'уточняйте'}</div>`;
+          } else if (price.price_value) {
+            popup += `<div style="font-size:16px;font-weight:bold;color:#1565C0;">${price.price_value} ₽/л</div>`;
+          }
+        } else {
+          popup += `<div style="color:#888;">Цена не указана (ДТ-Л)</div>`;
+        }
+
+        if (station.region) popup += `<div style="font-size:12px;color:#666;">Регион: ${station.region}</div>`;
+        marker.bindPopup(popup);
+        marker.addTo(stationsLayer);
+      });
+    }
+
+    // ---------- Перезагрузка цен при смене ценового листа ----------
+    // Вешаем обработчик после инициализации.
+    document.addEventListener('DOMContentLoaded', () => {
+      const select = document.getElementById('priceListSelect');
+      if (select) {
+        select.addEventListener('change', async () => {
+          // Если маршрут уже построен — перегружаем цены и перерисовываем.
+          if (routeGeojson && stationsOnRoute.length > 0) {
+            await loadPricesForSelectedList();
+            drawStationsWithPrices(stationsOnRoute);
+            setStatus('Цены обновлены для выбранного листа.', 'success');
+          }
+        });
+      }
+    });
+
+    // ---------- Заглушка: создание карты (шаг 9.4) ----------
     function createCard() {
       setStatus('Создание карты будет добавлено в шаге 9.4.', '');
     }
