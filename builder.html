@@ -307,11 +307,48 @@
     // Всё остальное (маршрут, сети, создание карты) — в следующих частях.
 
     if (adminKey) {
-      document.getElementById('adminKey').value = adminKey;
-      document.getElementById('authSection').style.display = 'block';
-      document.getElementById('map-hint').textContent = 'Ключ загружен. Логика будет добавлена в следующей части.';
+          // ============================================================
+    // Шаг 9.2. Загрузка данных и отрисовка станций
+    // ============================================================
+
+    // Глобальное состояние конструктора
+    let allNetworks = [];       // массив сетей из БД
+    let allStations = [];       // массив станций из БД
+    let stationsLayer = null;   // слой Leaflet с точками станций
+    let routeLineLayer = null;  // слой Leaflet с линией маршрута
+    let routePoints = [];       // точки маршрута: [{lat, lng, marker}]
+    let routeGeojson = null;    // геометрия последнего построенного маршрута
+    let stationsOnRoute = [];   // станции вдоль маршрута (если маршрут построен)
+
+    // ---------- Инициализация после ввода ключа ----------
+    async function initBuilder() {
+      setStatus('Загрузка данных...');
+      try {
+        await Promise.all([
+          loadNetworks(),
+          loadStations(),
+          loadPriceLists(),
+          loadRegions()
+        ]);
+        drawStations(allStations);
+        renderNetworksList(allNetworks);
+        setStatus('Данные загружены. Кликните на карте, чтобы задать точки маршрута.', 'success');
+        document.getElementById('map-hint').textContent =
+          'Кликните на карте начальную точку, затем конечную. Промежуточные — между ними.';
+        updateBuildButtonState();
+      } catch (e) {
+        setStatus('Ошибка загрузки: ' + e.message, 'error');
+      }
     }
 
+    // Автозапуск, если ключ уже был сохранён ранее
+    if (adminKey) {
+      document.getElementById('adminKey').value = adminKey;
+      document.getElementById('authSection').style.display = 'block';
+      initBuilder();
+    }
+
+    // ---------- Сохранение ключа ----------
     function saveAdminKey() {
       const key = document.getElementById('adminKey').value.trim();
       if (!key) {
@@ -321,7 +358,204 @@
       adminKey = key;
       localStorage.setItem('adminKey', key);
       document.getElementById('authSection').style.display = 'block';
-      document.getElementById('map-hint').textContent = 'Ключ сохранён. Логика будет добавлена в следующей части.';
+      initBuilder();
+    }
+
+    // ---------- Универсальный запрос к admin-data ----------
+    async function fetchAdmin(type, extra) {
+      let url = `${ADMIN_BASE_URL}/admin-data?type=${type}`;
+      if (extra) url += '&' + extra;
+      const response = await fetch(url, {
+        headers: { 'x-admin-key': adminKey }
+      });
+      if (!response.ok) {
+        throw new Error(`admin-data?type=${type} → ${response.status}`);
+      }
+      return response.json();
+    }
+
+    // ---------- Загрузка сетей ----------
+    async function loadNetworks() {
+      const data = await fetchAdmin('networks');
+      allNetworks = Array.isArray(data) ? data : [];
+    }
+
+    // ---------- Загрузка станций ----------
+    async function loadStations() {
+      const data = await fetchAdmin('stations');
+      allStations = Array.isArray(data) ? data : [];
+    }
+
+    // ---------- Загрузка ценовых листов в select ----------
+    async function loadPriceLists() {
+      const data = await fetchAdmin('price_lists');
+      const select = document.getElementById('priceListSelect');
+      select.innerHTML = '';
+      if (Array.isArray(data)) {
+        data.forEach(pl => {
+          const opt = document.createElement('option');
+          opt.value = pl.id;
+          opt.textContent = pl.name;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    // ---------- Загрузка регионов в select ----------
+    async function loadRegions() {
+      const data = await fetchAdmin('regions');
+      const select = document.getElementById('areaSelect');
+      select.innerHTML = '<option value="">Без сообщения</option>';
+      if (Array.isArray(data)) {
+        data.forEach(region => {
+          const opt = document.createElement('option');
+          opt.value = region;
+          opt.textContent = region;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    // ---------- Отрисовка станций на карте ----------
+    function drawStations(stations) {
+      if (stationsLayer) {
+        map.removeLayer(stationsLayer);
+      }
+      stationsLayer = L.layerGroup().addTo(map);
+
+      stations.forEach(station => {
+        if (!station.lat || !station.lon) return;
+
+        const color = colorForNetwork(station.networks);
+
+        const marker = L.circleMarker([station.lat, station.lon], {
+          radius: 6,
+          fillColor: color,
+          color: '#fff',
+          weight: 1.5,
+          fillOpacity: 0.9
+        });
+
+        let popup = `<b>${station.name || 'АЗС'}</b><br>`;
+        if (station.networks && station.networks.name) {
+          popup += `Сеть: ${station.networks.name}<br>`;
+        }
+        if (station.address) popup += `${station.address}<br>`;
+        if (station.region) popup += `Регион: ${station.region}`;
+        marker.bindPopup(popup);
+
+        marker.addTo(stationsLayer);
+      });
+    }
+
+    // Цвет маркера по color_code сети
+    function colorForNetwork(network) {
+      if (!network) return '#1E88E5';
+      switch (network.color_code) {
+        case 1: return '#43A047'; // зелёный
+        case 2: return '#FF9800'; // оранжевый
+        case 3: return '#1E88E5'; // синий
+        default: return '#607D8B'; // авто / серый
+      }
+    }
+
+    // ---------- Список сетей с чекбоксами ----------
+    function renderNetworksList(networks) {
+      const container = document.getElementById('networksList');
+      if (!networks.length) {
+        container.innerHTML = '<div class="list-item disabled">Сетей нет</div>';
+        return;
+      }
+      // Считаем количество станций по каждой сети
+      const counts = {};
+      allStations.forEach(s => {
+        if (s.network_id) {
+          counts[s.network_id] = (counts[s.network_id] || 0) + 1;
+        }
+      });
+
+      container.innerHTML = '';
+      networks
+        .slice()
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .forEach(net => {
+          const item = document.createElement('label');
+          item.className = 'list-item';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = net.id;
+          checkbox.dataset.networkId = net.id;
+          checkbox.className = 'network-checkbox';
+          checkbox.addEventListener('change', () => {
+            // Здесь позже будем фильтровать станции. Пока просто сообщаем в статус.
+            const selected = getSelectedNetworkIds();
+            if (selected.length === 0) {
+              setStatus('Сети не выбраны — будут показаны все станции.', '');
+            } else {
+              setStatus(`Выбрано сетей: ${selected.length}`, '');
+            }
+          });
+          item.appendChild(checkbox);
+
+          const text = document.createElement('span');
+          text.textContent = `${net.name}${net.region ? ' (' + net.region + ')' : ''}`;
+          item.appendChild(text);
+
+          const count = document.createElement('span');
+          count.className = 'count';
+          count.textContent = counts[net.id] || 0;
+          item.appendChild(count);
+
+          container.appendChild(item);
+        });
+    }
+
+    // ---------- Хелперы ----------
+    function getSelectedNetworkIds() {
+      return Array.from(document.querySelectorAll('.network-checkbox:checked'))
+        .map(cb => cb.value);
+    }
+
+    function selectAllNetworks(check) {
+      document.querySelectorAll('.network-checkbox').forEach(cb => {
+        cb.checked = check;
+      });
+      setStatus(check ? 'Отмечены все сети.' : 'Сети не выбраны — будут показаны все станции.', '');
+    }
+
+    function setStatus(text, kind) {
+      const el = document.getElementById('status');
+      el.textContent = text;
+      el.className = '';
+      if (kind) el.classList.add(kind);
+    }
+
+    function updateBuildButtonState() {
+      const btn = document.getElementById('buildRouteBtn');
+      btn.disabled = routePoints.length < 2;
+    }
+
+    // ---------- Заглушка: сброс точек маршрута ----------
+    // Полная логика — в шаге 9.3.
+    function clearRoutePoints() {
+      routePoints.forEach(p => {
+        if (p.marker) map.removeLayer(p.marker);
+      });
+      routePoints = [];
+      routeGeojson = null;
+      if (routeLineLayer) {
+        map.removeLayer(routeLineLayer);
+        routeLineLayer = null;
+      }
+      document.getElementById('routeInfo').textContent = '';
+      updateBuildButtonState();
+      setStatus('Точки маршрута сброшены.', '');
+    }
+
+    // ---------- Заглушка: построение маршрута ----------
+    // Полная логика — в шаге 9.3.
+    function buildRoute() {
+      setStatus('Построение маршрута будет добавлено в шаге 9.3.', '');
     }
   </script>
 </body>
