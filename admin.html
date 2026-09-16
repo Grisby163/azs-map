@@ -751,6 +751,80 @@ async function savePrice(stationId) {
     alert('Ошибка: ' + e.message);
   }
 }
+        // ============================================================
+    // Шаг 6. Очистка базы данных
+    // ============================================================
+
+    // Собирает отмеченные чекбоксы и вызывает очистку.
+    async function clearSelected() {
+      const checkboxes = document.querySelectorAll('.clear-table:checked');
+      const tables = Array.from(checkboxes).map(cb => cb.value);
+
+      if (tables.length === 0) {
+        document.getElementById('clearStatus').innerHTML =
+          '<span style="color:#d32f2f;">Ничего не выбрано</span>';
+        return;
+      }
+
+      await callClear(tables);
+    }
+
+    // Полная очистка — пустой массив таблиц = всё.
+    async function clearAll() {
+      await callClear([]);
+    }
+
+    // Общая функция вызова admin-clear-data.
+    // tables: массив имён таблиц. Пустой массив = полная очистка.
+    async function callClear(tables) {
+      const statusDiv = document.getElementById('clearStatus');
+      statusDiv.innerHTML = 'Выполняется очистка...';
+
+      try {
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-clear-data`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': adminKey
+          },
+          // Если массив пустой — отправляем пустой объект, функция поймёт
+          // это как полную очистку.
+          body: JSON.stringify(
+            tables.length > 0 ? { tables } : {}
+          )
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || ('Ошибка: ' + response.status));
+        }
+
+        // Формируем красивый отчёт о том, что удалено.
+        let report = '<p style="color:#2e7d32; font-weight:bold;">Очистка выполнена.</p><ul>';
+        Object.keys(result.deleted || {}).forEach(table => {
+          report += `<li>${table}: удалено ${result.deleted[table]}</li>`;
+        });
+        report += '</ul>';
+        statusDiv.innerHTML = report;
+
+        // Снимаем галочки — чтобы не оставить отмеченными после очистки.
+        document.querySelectorAll('.clear-table').forEach(cb => cb.checked = false);
+
+        // Обновляем вкладки, где были данные. Ошибки не критичны.
+        try { await loadTokens(); } catch (_) {}
+        try { await loadNetworks(); } catch (_) {}
+        try { await loadStations(); } catch (_) {}
+        try { await loadPriceLists(); } catch (_) {}
+        try { await loadPriceListsForForm(); } catch (_) {}
+        try { await loadPriceListsForPrices(); } catch (_) {}
+        try { await loadRegions(); } catch (_) {}
+
+      } catch (e) {
+        statusDiv.innerHTML =
+          `<span style="color:#d32f2f;">Ошибка: ${e.message}</span>`;
+      }
+    }
   </script>
 </body>
 </html>
