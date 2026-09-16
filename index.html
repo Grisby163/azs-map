@@ -158,11 +158,15 @@
 
     let allStations = [];
     let currentFuel = 'ДТ-Л';
-    let currentRoute = null;
     let markersLayer = L.layerGroup().addTo(map);
     let routeLine = null;
-    let currentRouteActualCoords = null;
     let filteredStations = [];
+
+    // Новое: данные, приходящие из meta от quick-service
+    let clientRouteGeojson = null;   // геометрия маршрута от менеджера
+    let clientMapTitle = null;       // заголовок карты
+    let clientRadiusKm = 5;          // радиус, с которым строился маршрут
+    let clientRouteLine = null;      // слой Leaflet с линией маршрута
 
     const highwayRoutes = {
       m10: { name: "Москва – Санкт‑Петербург (М10)", coords: [[37.5634,55.7756],[35.9176,56.8587],[34.9604,57.0411],[33.2486,57.9797],[31.2749,58.5228],[30.5043,59.8066]], radius: 5 },
@@ -249,22 +253,23 @@
       else return '#1E88E5';
     }
 
-    async function applyFilters() {
-      let stations = allStations;
+        function applyFilters() {
+      // Фильтруем только по топливу — станции уже отфильтрованы сервером
+      // по visible_station_ids / visible_networks.
+      const stations = allStations.filter(
+        station => getPriceForFuel(station, currentFuel) !== null
+      );
+      filteredStations = stations;
+      displayStations(stations);
 
-      if (currentRoute) {
-        await showRouteOnMap(currentRoute);
-        const lineCoords = currentRouteActualCoords 
-          ? currentRouteActualCoords.map(ll => [ll[1], ll[0]]) // [lon, lat]
-          : currentRoute.coords.map(c => [c[0], c[1]]);
-        const line = turf.lineString(lineCoords);
-        stations = stations.filter(station => {
-          const lat = station.lat, lon = station.lon;
-          if (isNaN(lat) || isNaN(lon)) return false;
-          const dist = turf.pointToLineDistance(turf.point([lon, lat]), line, { units: 'kilometers' });
-          return dist <= currentRoute.radius;
-        });
+      // Если у клиента есть маршрут — показываем панель сетей.
+      if (clientRouteGeojson) {
+        updateNetworkPanel(stations);
+        document.getElementById('network-panel').style.display = 'block';
+      } else {
+        document.getElementById('network-panel').style.display = 'none';
       }
+    }
 
       stations = stations.filter(station => getPriceForFuel(station, currentFuel) !== null);
       filteredStations = stations;
@@ -320,8 +325,12 @@
         marker.bindPopup(popupContent);
       });
 
-      if (stations.length > 0) {
-        const bounds = L.latLngBounds(stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon]));
+            // fitBounds делаем только если нет маршрута — иначе карта уже подстроена
+      // под маршрут в drawClientRoute().
+      if (!clientRouteGeojson && stations.length > 0) {
+        const bounds = L.latLngBounds(
+          stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon])
+        );
         map.fitBounds(bounds, { padding: [50, 50] });
       }
     }
@@ -394,7 +403,11 @@
         </div>`;
       });
       listDiv.innerHTML = html || 'Нет станций с ценами';
-      window._networkData = { nets: sorted, details: networks, routeName: currentRoute.name };
+            window._networkData = {
+        nets: sorted,
+        details: networks,
+        routeName: clientMapTitle || 'Карта АЗС'
+      };
     }
 
     window.downloadExcel = function() {
@@ -473,7 +486,7 @@
       return msg;
     }
 
-    // Загрузка данных
+       // Загрузка данных
     fetch(`${API_URL}?token=${token}`)
       .then(response => {
         if (!response.ok) throw new Error('Network response was not ok');
@@ -485,8 +498,16 @@
           const meta = data.meta || {};
           const area = meta.area || 'России';
           const showGreetingFlag = meta.show_greeting !== false;
+
+          // Новое: читаем маршрут, заголовок и радиус из meta.
+          clientRouteGeojson = meta.route_geojson || null;
+          clientMapTitle = meta.map_title || null;
+          clientRadiusKm = meta.radius_km || 5;
+
           buildFuelButtons();
-          applyFilters();
+          drawClientRoute();     // рисуем линию маршрута (если есть)
+          showMapTitle();        // показываем заголовок (если есть)
+          applyFilters();        // рисуем станции
           showGreeting(area, showGreetingFlag);
         } else {
           allStations = data;
@@ -498,6 +519,52 @@
         console.error('Error fetching stations:', error);
         document.body.innerHTML = `<h2 style="text-align:center;margin-top:50px;">Ошибка загрузки данных: ${error.message}</h2>`;
       });
+        // ============================================================
+    // Шаг 10. Отрисовка маршрута клиента и заголовка карты
+    // ============================================================
+
+    // Рисует линию маршрута, если он задан в meta.route_geojson.
+    function drawClientRoute() {
+      if (!clientRouteGeojson || !clientRouteGeojson.coordinates) return;
+
+      if (clientRouteLine) {
+        map.removeLayer(clientRouteLine);
+      }
+
+      // route_geojson.coordinates — массив [lon, lat].
+      // Leaflet ждёт [lat, lon].
+      const latlngs = clientRouteGeojson.coordinates.map(c => [c[1], c[0]]);
+
+      clientRouteLine = L.polyline(latlngs, {
+        color: '#1565C0',
+        weight: 5,
+        opacity: 0.85
+      }).addTo(map);
+
+      // Подстраиваем карту под маршрут.
+      map.fitBounds(clientRouteLine.getBounds(), { padding: [50, 50] });
+    }
+
+    // Показывает заголовок карты в панели управления сверху.
+    function showMapTitle() {
+      if (!clientMapTitle) return;
+
+      const panel = document.querySelector('.control-panel');
+      if (!panel) return;
+
+      // Удаляем старый заголовок, если он был (на случай перезагрузки).
+      const old = document.getElementById('map-title');
+      if (old) old.remove();
+
+      const div = document.createElement('div');
+      div.id = 'map-title';
+      div.style.cssText =
+        'flex-basis:100%; text-align:center; font-size:15px; ' +
+        'font-weight:bold; color:#1565C0; margin-bottom:4px;';
+      div.textContent = clientMapTitle;
+
+      panel.insertBefore(div, panel.firstChild);
+    }
   </script>
 </body>
 </html>
