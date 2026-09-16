@@ -205,8 +205,6 @@
         document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         currentRoute = null;
-        currentRouteActualCoords = null;
-        document.getElementById('yandex-link-container').style.display = 'none';
         applyFilters();
       });
       container.appendChild(allBtn);
@@ -252,8 +250,7 @@
       else if (ratio < 0.7) return '#FF9800';
       else return '#1E88E5';
     }
-
-        function applyFilters() {
+    function applyFilters() {
       // Фильтруем только по топливу — станции уже отфильтрованы сервером
       // по visible_station_ids / visible_networks.
       const stations = allStations.filter(
@@ -268,24 +265,6 @@
         document.getElementById('network-panel').style.display = 'block';
       } else {
         document.getElementById('network-panel').style.display = 'none';
-      }
-    }
-
-      stations = stations.filter(station => getPriceForFuel(station, currentFuel) !== null);
-      filteredStations = stations;
-      displayStations(stations);
-
-      if (currentRoute) {
-        updateNetworkPanel(stations);
-        document.getElementById('network-panel').style.display = 'block';
-      } else {
-        if (routeLine) {
-          map.removeLayer(routeLine);
-          routeLine = null;
-        }
-        currentRouteActualCoords = null;
-        document.getElementById('network-panel').style.display = 'none';
-        document.getElementById('yandex-link-container').style.display = 'none';
       }
     }
 
@@ -337,7 +316,6 @@
 
     async function showRouteOnMap(route) {
       if (routeLine) map.removeLayer(routeLine);
-      const yandexLinkContainer = document.getElementById('yandex-link-container');
       yandexLinkContainer.style.display = 'none';
 
       try {
@@ -352,7 +330,6 @@
         const coords = data.paths[0].points.coordinates;
         const latlngs = coords.map(c => [c[1], c[0]]);
         routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-        currentRouteActualCoords = latlngs;
 
         // Формируем URL для Яндекс.Карт (по желанию)
         const yandexUrl = buildYandexMapUrl(route.coords.map(c => [c[1], c[0]]));
@@ -363,7 +340,6 @@
         console.warn('GraphHopper failed, fallback to straight lines', e);
         const latlngs = route.coords.map(c => [c[1], c[0]]);
         routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-        currentRouteActualCoords = latlngs;
         yandexLinkContainer.style.display = 'none';
       }
     }
