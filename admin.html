@@ -43,6 +43,7 @@
         <span class="tab" onclick="switchTab('create')">Создать карту</span>
         <span class="tab" onclick="switchTab('import')">Импорт</span>
         <span class="tab" onclick="switchTab('prices')">Цены</span>
+        <span class="tab" onclick="switchTab('clear')">Очистка</span>
       </div>
 
       <div id="clients" class="tab-content active">
@@ -114,6 +115,50 @@
           <div id="unmatchedStations"></div>
           <button onclick="submitImport()">Отправить импорт</button>
         </div>
+      </div>
+            <div id="clear" class="tab-content">
+        <h2>Очистка базы данных</h2>
+        <p style="color:#d32f2f; font-weight:bold;">
+          Внимание: удаление необратимо. Бэкапов нет. Действуйте осознанно.
+        </p>
+
+        <div class="form-group">
+          <label>Что очистить</label>
+          <div style="margin-top:6px; line-height:1.9;">
+            <label style="font-weight:normal;">
+              <input type="checkbox" class="clear-table" value="prices"> Цены
+            </label><br>
+            <label style="font-weight:normal;">
+              <input type="checkbox" class="clear-table" value="tokens"> Клиенты (токены)
+            </label><br>
+            <label style="font-weight:normal;">
+              <input type="checkbox" class="clear-table" value="stations"> Станции
+            </label><br>
+            <label style="font-weight:normal;">
+              <input type="checkbox" class="clear-table" value="networks"> Сети
+            </label><br>
+            <label style="font-weight:normal;">
+              <input type="checkbox" class="clear-table" value="price_lists"> Ценовые листы
+            </label><br>
+            <label style="font-weight:normal;">
+              <input type="checkbox" class="clear-table" value="routes"> Маршруты (шаблоны)
+            </label>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <button onclick="clearSelected()">Очистить выбранное</button>
+          <button onclick="clearAll()" style="background:#d32f2f; margin-left:8px;">
+            Очистить ВСЁ
+          </button>
+        </div>
+
+        <div id="clearStatus" class="msg"></div>
+
+        <p style="font-size:12px; color:#666; margin-top:14px;">
+          Совет: при очистке «Станции» или «Сети» добавляйте в список и «Цены» —
+          иначе внешние ключи могут заблокировать удаление.
+        </p>
       </div>
     </div>
   </div>
