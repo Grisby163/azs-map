@@ -386,40 +386,104 @@
       };
     }
 
-    window.downloadExcel = function() {
+       window.downloadExcel = function() {
       if (!window._networkData) return;
       const data = window._networkData;
       const wb = XLSX.utils.book_new();
+
+      // ---------- Считаем километраж каждой станции вдоль маршрута ----------
+      // Если маршрута нет — km остаётся null, колонка «Км» не выводится.
+      const hasRoute = !!clientRouteGeojson;
+
+      let stationsWithKm = filteredStations.map(station => {
+        const price = getPriceForFuel(station, currentFuel);
+        let km = null;
+
+        if (hasRoute && station.lat && station.lon) {
+          try {
+            const line = turf.lineString(clientRouteGeojson.coordinates);
+            const pt = turf.point([station.lon, station.lat]);
+            // nearestPointOnLine возвращает properties.location — долю
+            // от 0 до 1, показывающую положение проекции точки на линии.
+            const snapped = turf.nearestPointOnLine(line, pt, { units: 'kilometers' });
+            const totalLen = turf.length(line, { units: 'kilometers' });
+            km = totalLen * (snapped.properties.location || 0);
+          } catch (e) {
+            km = null;
+          }
+        }
+
+        return { station, price, km };
+      });
+
+      // Сортируем по километражу, если маршрут есть.
+      if (hasRoute) {
+        stationsWithKm.sort((a, b) => {
+          if (a.km === null && b.km === null) return 0;
+          if (a.km === null) return 1;
+          if (b.km === null) return -1;
+          return a.km - b.km;
+        });
+      }
+
+      // ---------- Формируем шапку и сводку ----------
       const rows = [
         ['Коммерческое предложение'],
         ['Маршрут: ' + data.routeName],
         ['Дата: ' + new Date().toLocaleDateString()],
         [],
         ['Минимальная цена', Math.min(...Object.values(data.details).map(d => d.price)).toFixed(2) + ' ₽/л'],
-        ['Средняя цена', (Object.values(data.details).reduce((sum,d) => sum + d.price, 0) / data.nets.length).toFixed(2) + ' ₽/л'],
+        ['Средняя цена', (Object.values(data.details).reduce((sum, d) => sum + d.price, 0) / data.nets.length).toFixed(2) + ' ₽/л'],
         ['Количество сетей', data.nets.length],
         [],
         ['Сеть', 'Мин. цена на маршруте']
       ];
+
       data.nets.forEach(net => {
         const nd = data.details[net];
         rows.push([net, nd.price.toFixed(2) + ' ₽/л']);
       });
-      rows.push([], ['Координаты АЗС'], ['Название', 'Адрес', 'Цена', 'Широта', 'Долгота']);
-      filteredStations.forEach(station => {
-        const price = getPriceForFuel(station, currentFuel);
-        if (price && !price.is_discount) {
+
+      rows.push([]);
+
+      // ---------- Шапка таблицы станций ----------
+      const header = hasRoute
+        ? ['Км', 'Название', 'Адрес', 'Сеть', 'Цена', 'Скидка']
+        : ['Название', 'Адрес', 'Сеть', 'Цена', 'Скидка'];
+      rows.push(header);
+
+      // ---------- Строки станций ----------
+      stationsWithKm.forEach(({ station, price, km }) => {
+        const name = station.name || '';
+        const address = station.address || '';
+        const network = station.network_name || '';
+        let priceStr = '';
+        let discountStr = '';
+
+        if (price) {
+          if (price.is_discount) {
+            discountStr = price.discount_text || 'скидка';
+          } else if (price.price_value) {
+            priceStr = price.price_value;
+          }
+        }
+
+        if (hasRoute) {
           rows.push([
-            station.name || '',
-            station.address || '',
-            price.price_value,
-            station.lat.toFixed(6),
-            station.lon.toFixed(6)
+            km !== null ? km.toFixed(1) : '',
+            name, address, network, priceStr, discountStr
           ]);
+        } else {
+          rows.push([name, address, network, priceStr, discountStr]);
         }
       });
+
+      // ---------- Записываем файл ----------
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [{wch:25},{wch:20},{wch:15},{wch:15},{wch:15}];
+      ws['!cols'] = hasRoute
+        ? [{ wch: 8 }, { wch: 25 }, { wch: 30 }, { wch: 20 }, { wch: 10 }, { wch: 15 }]
+        : [{ wch: 25 }, { wch: 30 }, { wch: 20 }, { wch: 10 }, { wch: 15 }];
+
       XLSX.utils.book_append_sheet(wb, ws, 'Маршрут');
       XLSX.writeFile(wb, 'АЗС_маршрут.xlsx');
     };
