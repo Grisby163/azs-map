@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Конструктор карт АЗС</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
+
+    /* Основная сетка: слева панель, справа карта */
+    #layout { display: flex; height: 100vh; }
+
+    /* Левая панель управления */
+    #sidebar {
+      width: 380px;
+      min-width: 380px;
+      background: #f5f5f5;
+      overflow-y: auto;
+      padding: 16px;
+      box-sizing: border-box;
+      border-right: 1px solid #ccc;
+    }
+    #sidebar h1 {
+      font-size: 18px;
+      color: #1565C0;
+      margin: 0 0 16px;
+    }
+    #sidebar h2 {
+      font-size: 14px;
+      color: #1565C0;
+      margin: 16px 0 8px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 4px;
+    }
+    .form-group { margin-bottom: 12px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="password"],
+    .form-group input[type="number"],
+    .form-group select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+      font-size: 13px;
+    }
+    button {
+      padding: 8px 14px;
+      background: #1565C0;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-right: 6px;
+    }
+    button:hover { background: #0D47A1; }
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+    button.secondary {
+      background: #607D8B;
+    }
+    button.secondary:hover {
+      background: #455A64;
+    }
+    button.danger {
+      background: #d32f2f;
+    }
+    button.danger:hover {
+      background: #b71c1c;
+    }
+
+    /* Правая часть с картой */
+    #map-wrapper {
+      flex: 1;
+      position: relative;
+    }
+    #map { height: 100%; width: 100%; }
+
+    /* Плавающая подсказка сверху карты */
+    #map-hint {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.95);
+      padding: 8px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 1000;
+      font-size: 13px;
+      color: #333;
+    }
+
+    /* Список сетей и станций */
+    .list-box {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 6px;
+      font-size: 13px;
+    }
+    .list-item {
+      display: flex;
+      align-items: center;
+      padding: 4px 2px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-item input[type="checkbox"] { margin-right: 6px; }
+    .list-item .count {
+      margin-left: auto;
+      color: #888;
+      font-size: 12px;
+    }
+    .list-item.disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    /* Строка статуса */
+    #status {
+      margin-top: 12px;
+      font-size: 13px;
+      padding: 8px;
+      border-radius: 5px;
+      background: #e3f2fd;
+      color: #0D47A1;
+      min-height: 18px;
+    }
+    #status.error {
+      background: #ffebee;
+      color: #b71c1c;
+    }
+    #status.success {
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+
+    /* Результат создания карты */
+    #result {
+      margin-top: 12px;
+      padding: 12px;
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 5px;
+      font-size: 13px;
+      word-break: break-all;
+      display: none;
+    }
+    #result a {
+      color: #1565C0;
+      font-weight: bold;
+    }
+
+    /* Технические детали (сворачиваемые) */
+    details {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #666;
+    }
+    details summary {
+      cursor: pointer;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="layout">
+
+    <!-- ============================ -->
+    <!-- ЛЕВАЯ ПАНЕЛЬ УПРАВЛЕНИЯ       -->
+    <!-- ============================ -->
+    <div id="sidebar">
+      <h1>Конструктор карт АЗС</h1>
+
+      <!-- Ключ администратора -->
+      <div class="form-group">
+        <label for="adminKey">Ключ администратора</label>
+        <input type="password" id="adminKey" placeholder="Введите ключ">
+        <div style="margin-top:6px;">
+          <button onclick="saveAdminKey()">Сохранить ключ</button>
+        </div>
+      </div>
+
+      <!-- Секция, доступная после ввода ключа -->
+      <div id="authSection" style="display:none;">
+
+        <!-- ============ ШАГ 1. МАРШРУТ ============ -->
+        <h2>1. Маршрут (опционально)</h2>
+        <p style="font-size:12px; color:#666; margin-top:0;">
+          Кликните на карте начальную точку, затем конечную. Можно добавить
+          промежуточные — они вставляются между первыми двумя кликами.
+        </p>
+        <div class="form-group">
+          <label>Радиус поиска АЗС вдоль маршрута (км)</label>
+          <input type="number" id="radiusKm" value="5" min="1" max="50" step="1">
+        </div>
+        <div>
+          <button onclick="buildRoute()" id="buildRouteBtn" disabled>Построить маршрут</button>
+          <button onclick="clearRoutePoints()" class="secondary">Сбросить точки</button>
+        </div>
+        <div id="routeInfo" style="font-size:12px; color:#555; margin-top:8px;"></div>
+
+        <!-- ============ ШАГ 2. СЕТИ ============ -->
+        <h2>2. Сети</h2>
+        <p style="font-size:12px; color:#666; margin-top:0;">
+          Отметьте сети, которые нужно показать. Если ни одна не отмечена —
+          покажем все станции вдоль маршрута.
+        </p>
+        <div style="margin-bottom:6px;">
+          <button onclick="selectAllNetworks(true)" class="secondary" style="font-size:12px; padding:4px 8px;">Все</button>
+          <button onclick="selectAllNetworks(false)" class="secondary" style="font-size:12px; padding:4px 8px;">Ничего</button>
+        </div>
+        <div class="list-box" id="networksList"></div>
+
+        <!-- ============ ШАГ 3. ПАРАМЕТРЫ КАРТЫ ============ -->
+        <h2>3. Параметры карты</h2>
+        <div class="form-group">
+          <label>Имя клиента</label>
+          <input type="text" id="clientName" placeholder="Например: ООО Ромашка">
+        </div>
+        <div class="form-group">
+          <label>Заголовок карты</label>
+          <input type="text" id="mapTitle" placeholder="Например: Москва – Санкт-Петербург">
+        </div>
+        <div class="form-group">
+          <label>Ценовой лист</label>
+          <select id="priceListSelect"></select>
+        </div>
+        <div class="form-group">
+          <label>Область для приветствия</label>
+          <select id="areaSelect">
+            <option value="">Без сообщения</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Показывать приветствие</label>
+          <select id="showGreeting">
+            <option value="true">Да</option>
+            <option value="false">Нет</option>
+          </select>
+        </div>
+
+        <!-- ============ СОЗДАНИЕ ============ -->
+        <button onclick="createCard()" id="createCardBtn" style="width:100%; margin-top:10px; font-size:14px; padding:10px;">
+          Создать карту
+        </button>
+
+        <!-- Статус -->
+        <div id="status"></div>
+
+        <!-- Результат -->
+        <div id="result"></div>
+
+        <!-- Технические детали -->
+        <details>
+          <summary>Показать технические детали</summary>
+          <div id="techDetails" style="margin-top:6px; font-size:11px; font-family:monospace;"></div>
+        </details>
+
+      </div>
+    </div>
+
+    <!-- ============================ -->
+    <!-- ПРАВАЯ ЧАСТЬ С КАРТОЙ        -->
+    <!-- ============================ -->
+    <div id="map-wrapper">
+      <div id="map"></div>
+      <div id="map-hint">
+        Введите ключ администратора, чтобы начать
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    // ============================================================
+    // Шаг 9.1: HTML-каркас. Логика будет в следующих частях.
+    // ============================================================
+
+    const ADMIN_BASE_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1';
+    let adminKey = localStorage.getItem('adminKey') || '';
+
+    // Карта инициализируется сразу, чтобы её было видно ещё до ввода ключа.
+    const map = L.map('map').setView([55.75, 37.62], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'OSM'
+    }).addTo(map);
+
+    // Пока подключаем только сохранение ключа и восстановление из localStorage.
+    // Всё остальное (маршрут, сети, создание карты) — в следующих частях.
+
+    if (adminKey) {
+      document.getElementById('adminKey').value = adminKey;
+      document.getElementById('authSection').style.display = 'block';
+      document.getElementById('map-hint').textContent = 'Ключ загружен. Логика будет добавлена в следующей части.';
+    }
+
+    function saveAdminKey() {
+      const key = document.getElementById('adminKey').value.trim();
+      if (!key) {
+        alert('Введите ключ');
+        return;
+      }
+      adminKey = key;
+      localStorage.setItem('adminKey', key);
+      document.getElementById('authSection').style.display = 'block';
+      document.getElementById('map-hint').textContent = 'Ключ сохранён. Логика будет добавлена в следующей части.';
+    }
+  </script>
+</body>
+</html>
