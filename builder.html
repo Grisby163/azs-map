@@ -96,9 +96,28 @@
         <p style="font-size:12px; color:#666; margin-top:0;">
           Кликните на карте начальную точку, затем конечную. Промежуточные — между ними.
         </p>
+                <div class="form-group">
+          <label>Откуда (город)</label>
+          <input type="text" id="cityFrom" placeholder="Например: Москва">
+        </div>
+        <div class="form-group">
+          <label>Куда (город)</label>
+          <input type="text" id="cityTo" placeholder="Например: Санкт-Петербург">
+        </div>
+        <div style="margin-bottom:12px;">
+          <button onclick="buildRouteByCities()" id="buildCitiesBtn" class="secondary">
+            Найти города и построить маршрут
+          </button>
+        </div>
         <div class="form-group">
           <label>Радиус поиска АЗС вдоль маршрута (км)</label>
           <input type="number" id="radiusKm" value="5" min="1" max="50" step="1">
+        </div>
+                <div class="form-group">
+          <label style="display:flex; align-items:center; gap:8px; font-weight:normal; cursor:pointer;">
+            <input type="checkbox" id="excludeToll" style="width:auto;">
+            Избегать платных дорог
+          </label>
         </div>
         <div>
           <button onclick="buildRoute()" id="buildRouteBtn" disabled>Построить маршрут</button>
@@ -445,8 +464,7 @@
       setStatus('Построение маршрута...', '');
       document.getElementById('buildRouteBtn').disabled = true;
 
-      try {
-        // Координаты в формате [lon, lat] — как ждёт OSRM и GeoJSON.
+            try {
         const coordinates = routePoints.map(p => [p.lng, p.lat]);
 
         const response = await fetch(`${ADMIN_BASE_URL}/admin-build-route`, {
@@ -455,15 +473,24 @@
             'Content-Type': 'application/json',
             'x-admin-key': adminKey
           },
-          body: JSON.stringify({ coordinates })
+          body: JSON.stringify({
+            coordinates,
+            exclude_toll: document.getElementById('excludeToll').checked
+          })
         });
 
         const result = await response.json();
+
         if (!response.ok || !result.success) {
+          if (result.error && result.error.includes("Impossible route")) {
+            setStatus('OSRM не нашёл маршрут без платных дорог. Снимите галочку «Избегать платных дорог».', 'error');
+            return;
+          }
           throw new Error(result.error || 'Не удалось построить маршрут');
         }
 
         routeGeojson = result.route_geojson;
+        // ... остальной код без изменений ...
 
         // Рисуем линию маршрута на карте.
         if (routeLineLayer) map.removeLayer(routeLineLayer);
@@ -500,7 +527,63 @@
         document.getElementById('buildRouteBtn').disabled = false;
       }
     }
+        // ---------- Геокодинг через Nominatim ----------
+    async function geocodeCity(cityName) {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1&accept-language=ru`;
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'AZS-Map-Builder/1.0' }
+      });
+      if (!response.ok) throw new Error('Ошибка геокодинга: ' + response.status);
+      const data = await response.json();
+      if (!data || data.length === 0) {
+        throw new Error(`Город «${cityName}» не найден`);
+      }
+      return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon),
+        displayName: data[0].display_name
+      };
+    }
 
+    // ---------- Построение маршрута по названиям городов ----------
+    async function buildRouteByCities() {
+      const fromCity = document.getElementById('cityFrom').value.trim();
+      const toCity = document.getElementById('cityTo').value.trim();
+
+      if (!fromCity || !toCity) {
+        setStatus('Введите оба города.', 'error');
+        return;
+      }
+
+      setStatus('Поиск городов...', '');
+      document.getElementById('buildCitiesBtn').disabled = true;
+
+      try {
+        // 1. Геокодим оба города.
+        const fromPoint = await geocodeCity(fromCity);
+        const toPoint = await geocodeCity(toCity);
+
+        setStatus(`Найдено: ${fromPoint.displayName} → ${toPoint.displayName}`, '');
+
+        // 2. Очищаем текущие точки маршрута.
+        clearRoutePoints();
+
+        // 3. Добавляем точки на карту.
+        addRoutePoint(L.latLng(fromPoint.lat, fromPoint.lon));
+        addRoutePoint(L.latLng(toPoint.lat, toPoint.lon));
+
+        // 4. Небольшая пауза, чтобы точки отрисовались.
+        await new Promise(r => setTimeout(r, 100));
+
+        // 5. Строим маршрут.
+        await buildRoute();
+
+      } catch (e) {
+        setStatus('Ошибка: ' + e.message, 'error');
+      } finally {
+        document.getElementById('buildCitiesBtn').disabled = false;
+      }
+    }
     // ---------- Фильтрация станций вдоль маршрута ----------
     function filterStationsOnRoute() {
       if (!routeGeojson) {
