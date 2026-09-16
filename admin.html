@@ -871,10 +871,11 @@ async function savePrice(stationId) {
      // ============================================================
     // Шаг 15. Аналитика. Заглушка для дублирования (шаг 13).
     // ============================================================
-    function duplicateCard(token) {
-      // Полная логика будет в шаге 13. Пока просто открываем конструктор
-      // с этим токеном в URL как подсказку.
-      window.open(`/builder.html?from_token=${token}`, '_blank');
+        function duplicateCard(token) {
+      // Открываем конструктор в новой вкладке с исходным токеном.
+      // Конструктор сам подтянет параметры карты.
+      const url = `/builder.html?from_token=${encodeURIComponent(token)}`;
+      window.open(url, '_blank');
     }
   </script>
 </body>
