@@ -216,8 +216,7 @@
     let routeGeojson = null;
     let stationsOnRoute = [];
 
-    // ---------- Инициализация ----------
-    async function initBuilder() {
+      async function initBuilder() {
       setStatus('Загрузка данных...');
       try {
         await Promise.all([
@@ -228,9 +227,17 @@
         ]);
         drawStations(allStations);
         renderNetworksList(allNetworks);
-        setStatus('Данные загружены. Кликните на карте, чтобы задать точки маршрута.', 'success');
-        document.getElementById('map-hint').textContent =
-          'Кликните на карте начальную точку, затем конечную. Промежуточные — между ними.';
+
+        // Проверяем, пришли ли мы из админки по кнопке «Дублировать».
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromToken = urlParams.get('from_token');
+        if (fromToken) {
+          await preloadFromToken(fromToken);
+        } else {
+          setStatus('Данные загружены. Кликните на карте, чтобы задать точки маршрута.', 'success');
+          document.getElementById('map-hint').textContent =
+            'Кликните на карте начальную точку, затем конечную. Промежуточные — между ними.';
+        }
         updateBuildButtonState();
       } catch (e) {
         setStatus('Ошибка загрузки: ' + e.message, 'error');
@@ -725,7 +732,97 @@
         // ============================================================
     // Шаг 9.4. Создание карты через quick-function
     // ============================================================
+    // ============================================================
+    // Шаг 13. Дублирование карты: подгрузка параметров существующего токена
+    // ============================================================
 
+    async function preloadFromToken(tokenValue) {
+      setStatus('Загрузка параметров карты...', '');
+      try {
+        // Забираем список токенов и находим нужный.
+        const tokens = await fetchAdmin('tokens');
+        const source = Array.isArray(tokens)
+          ? tokens.find(t => t.token === tokenValue)
+          : null;
+
+        if (!source) {
+          setStatus('Исходная карта не найдена в списке последних 100. Введите параметры вручную.', 'error');
+          return;
+        }
+
+        // ---------- Подставляем поля формы ----------
+        const nameInput = document.getElementById('clientName');
+        const baseName = (source.client_name || '').trim();
+        nameInput.value = baseName ? baseName + ' (копия)' : '';
+
+        const titleInput = document.getElementById('mapTitle');
+        titleInput.value = source.map_title || '';
+
+        const radiusInput = document.getElementById('radiusKm');
+        radiusInput.value = source.radius_km || 5;
+
+        // Ценовой лист.
+        if (source.price_list_id) {
+          const sel = document.getElementById('priceListSelect');
+          sel.value = source.price_list_id;
+        }
+
+        // Область для приветствия.
+        const areaSelect = document.getElementById('areaSelect');
+        if (source.area) {
+          areaSelect.value = source.area;
+        }
+
+        // Приветствие.
+        const greetingSelect = document.getElementById('showGreeting');
+        greetingSelect.value = source.show_greeting !== false ? 'true' : 'false';
+
+        // ---------- Отмечаем сети ----------
+        if (Array.isArray(source.visible_networks) && source.visible_networks.length > 0) {
+          document.querySelectorAll('.network-checkbox').forEach(cb => {
+            cb.checked = source.visible_networks.includes(cb.value);
+          });
+        }
+
+        // ---------- Восстанавливаем маршрут ----------
+        if (source.route_geojson && source.route_geojson.coordinates) {
+          routeGeojson = source.route_geojson;
+
+          // Рисуем линию.
+          if (routeLineLayer) map.removeLayer(routeLineLayer);
+          const latlngs = routeGeojson.coordinates.map(c => [c[1], c[0]]);
+          routeLineLayer = L.polyline(latlngs, {
+            color: '#1565C0',
+            weight: 5,
+            opacity: 0.85
+          }).addTo(map);
+          map.fitBounds(routeLineLayer.getBounds(), { padding: [50, 50] });
+
+          // Фильтруем станции вдоль маршрута и подгружаем цены.
+          filterStationsOnRoute();
+          await loadPricesForSelectedList();
+          drawStationsWithPrices(stationsOnRoute);
+
+          // Информация о маршруте.
+          const line = turf.lineString(routeGeojson.coordinates);
+          const km = turf.length(line, { units: 'kilometers' }).toFixed(1);
+          document.getElementById('routeInfo').textContent =
+            `Восстановлен маршрут: ${km} км. Станций вдоль него: ${stationsOnRoute.length}.`;
+        }
+
+        // ---------- Смещаем карту, если маршрута нет ----------
+        if (!source.route_geojson && allStations.length > 0) {
+          // Не сдвигаем — просто оставляем текущий вид.
+        }
+
+        setStatus('Параметры карты подставлены. Проверьте имя клиента и нажмите «Создать карту».', 'success');
+        document.getElementById('map-hint').textContent =
+          'Параметры исходной карты загружены. Можно изменить название и создать новую.';
+
+      } catch (e) {
+        setStatus('Ошибка дублирования: ' + e.message, 'error');
+      }
+    }
     async function createCard() {
       // ---------- 1. Собираем и валидируем данные ----------
       const clientName = document.getElementById('clientName').value.trim();
