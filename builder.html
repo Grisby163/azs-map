@@ -7,11 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
-
-    /* Основная сетка: слева панель, справа карта */
     #layout { display: flex; height: 100vh; }
-
-    /* Левая панель управления */
     #sidebar {
       width: 380px;
       min-width: 380px;
@@ -21,172 +17,71 @@
       box-sizing: border-box;
       border-right: 1px solid #ccc;
     }
-    #sidebar h1 {
-      font-size: 18px;
-      color: #1565C0;
-      margin: 0 0 16px;
-    }
+    #sidebar h1 { font-size: 18px; color: #1565C0; margin: 0 0 16px; }
     #sidebar h2 {
-      font-size: 14px;
-      color: #1565C0;
-      margin: 16px 0 8px;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 4px;
+      font-size: 14px; color: #1565C0; margin: 16px 0 8px;
+      border-bottom: 1px solid #ddd; padding-bottom: 4px;
     }
     .form-group { margin-bottom: 12px; }
-    .form-group label {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 13px;
-      font-weight: bold;
-    }
+    .form-group label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: bold; }
     .form-group input[type="text"],
     .form-group input[type="password"],
     .form-group input[type="number"],
     .form-group select {
-      width: 100%;
-      padding: 6px 8px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      box-sizing: border-box;
-      font-size: 13px;
+      width: 100%; padding: 6px 8px; border: 1px solid #ccc;
+      border-radius: 5px; box-sizing: border-box; font-size: 13px;
     }
     button {
-      padding: 8px 14px;
-      background: #1565C0;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 13px;
-      margin-right: 6px;
+      padding: 8px 14px; background: #1565C0; color: white;
+      border: none; border-radius: 5px; cursor: pointer;
+      font-size: 13px; margin-right: 6px;
     }
     button:hover { background: #0D47A1; }
-    button:disabled {
-      background: #aaa;
-      cursor: not-allowed;
-    }
-    button.secondary {
-      background: #607D8B;
-    }
-    button.secondary:hover {
-      background: #455A64;
-    }
-    button.danger {
-      background: #d32f2f;
-    }
-    button.danger:hover {
-      background: #b71c1c;
-    }
-
-    /* Правая часть с картой */
-    #map-wrapper {
-      flex: 1;
-      position: relative;
-    }
+    button:disabled { background: #aaa; cursor: not-allowed; }
+    button.secondary { background: #607D8B; }
+    button.secondary:hover { background: #455A64; }
+    #map-wrapper { flex: 1; position: relative; }
     #map { height: 100%; width: 100%; }
-
-    /* Плавающая подсказка сверху карты */
     #map-hint {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(255,255,255,0.95);
-      padding: 8px 16px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      z-index: 1000;
-      font-size: 13px;
-      color: #333;
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.95); padding: 8px 16px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000;
+      font-size: 13px; color: #333;
     }
-
-    /* Список сетей и станций */
     .list-box {
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      max-height: 220px;
-      overflow-y: auto;
-      padding: 6px;
-      font-size: 13px;
+      background: white; border: 1px solid #ddd; border-radius: 5px;
+      max-height: 220px; overflow-y: auto; padding: 6px; font-size: 13px;
     }
     .list-item {
-      display: flex;
-      align-items: center;
-      padding: 4px 2px;
-      border-bottom: 1px solid #f0f0f0;
-      cursor: pointer;
+      display: flex; align-items: center; padding: 4px 2px;
+      border-bottom: 1px solid #f0f0f0; cursor: pointer;
     }
     .list-item:last-child { border-bottom: none; }
     .list-item input[type="checkbox"] { margin-right: 6px; }
-    .list-item .count {
-      margin-left: auto;
-      color: #888;
-      font-size: 12px;
-    }
-    .list-item.disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-
-    /* Строка статуса */
+    .list-item .count { margin-left: auto; color: #888; font-size: 12px; }
+    .list-item.disabled { opacity: 0.5; cursor: default; }
     #status {
-      margin-top: 12px;
-      font-size: 13px;
-      padding: 8px;
-      border-radius: 5px;
-      background: #e3f2fd;
-      color: #0D47A1;
-      min-height: 18px;
+      margin-top: 12px; font-size: 13px; padding: 8px; border-radius: 5px;
+      background: #e3f2fd; color: #0D47A1; min-height: 18px;
     }
-    #status.error {
-      background: #ffebee;
-      color: #b71c1c;
-    }
-    #status.success {
-      background: #e8f5e9;
-      color: #1b5e20;
-    }
-
-    /* Результат создания карты */
+    #status.error { background: #ffebee; color: #b71c1c; }
+    #status.success { background: #e8f5e9; color: #1b5e20; }
     #result {
-      margin-top: 12px;
-      padding: 12px;
-      background: #e8f5e9;
-      border: 1px solid #a5d6a7;
-      border-radius: 5px;
-      font-size: 13px;
-      word-break: break-all;
-      display: none;
+      margin-top: 12px; padding: 12px; background: #e8f5e9;
+      border: 1px solid #a5d6a7; border-radius: 5px; font-size: 13px;
+      word-break: break-all; display: none;
     }
-    #result a {
-      color: #1565C0;
-      font-weight: bold;
-    }
-
-    /* Технические детали (сворачиваемые) */
-    details {
-      margin-top: 8px;
-      font-size: 12px;
-      color: #666;
-    }
-    details summary {
-      cursor: pointer;
-      user-select: none;
-    }
+    #result a { color: #1565C0; font-weight: bold; }
+    details { margin-top: 8px; font-size: 12px; color: #666; }
+    details summary { cursor: pointer; user-select: none; }
   </style>
 </head>
 <body>
   <div id="layout">
 
-    <!-- ============================ -->
-    <!-- ЛЕВАЯ ПАНЕЛЬ УПРАВЛЕНИЯ       -->
-    <!-- ============================ -->
     <div id="sidebar">
       <h1>Конструктор карт АЗС</h1>
 
-      <!-- Ключ администратора -->
       <div class="form-group">
         <label for="adminKey">Ключ администратора</label>
         <input type="password" id="adminKey" placeholder="Введите ключ">
@@ -195,14 +90,11 @@
         </div>
       </div>
 
-      <!-- Секция, доступная после ввода ключа -->
       <div id="authSection" style="display:none;">
 
-        <!-- ============ ШАГ 1. МАРШРУТ ============ -->
         <h2>1. Маршрут (опционально)</h2>
         <p style="font-size:12px; color:#666; margin-top:0;">
-          Кликните на карте начальную точку, затем конечную. Можно добавить
-          промежуточные — они вставляются между первыми двумя кликами.
+          Кликните на карте начальную точку, затем конечную. Промежуточные — между ними.
         </p>
         <div class="form-group">
           <label>Радиус поиска АЗС вдоль маршрута (км)</label>
@@ -214,11 +106,9 @@
         </div>
         <div id="routeInfo" style="font-size:12px; color:#555; margin-top:8px;"></div>
 
-        <!-- ============ ШАГ 2. СЕТИ ============ -->
         <h2>2. Сети</h2>
         <p style="font-size:12px; color:#666; margin-top:0;">
-          Отметьте сети, которые нужно показать. Если ни одна не отмечена —
-          покажем все станции вдоль маршрута.
+          Отметьте сети, которые нужно показать. Если ни одна не отмечена — покажем все станции.
         </p>
         <div style="margin-bottom:6px;">
           <button onclick="selectAllNetworks(true)" class="secondary" style="font-size:12px; padding:4px 8px;">Все</button>
@@ -226,7 +116,6 @@
         </div>
         <div class="list-box" id="networksList"></div>
 
-        <!-- ============ ШАГ 3. ПАРАМЕТРЫ КАРТЫ ============ -->
         <h2>3. Параметры карты</h2>
         <div class="form-group">
           <label>Имя клиента</label>
@@ -254,18 +143,13 @@
           </select>
         </div>
 
-        <!-- ============ СОЗДАНИЕ ============ -->
         <button onclick="createCard()" id="createCardBtn" style="width:100%; margin-top:10px; font-size:14px; padding:10px;">
           Создать карту
         </button>
 
-        <!-- Статус -->
         <div id="status"></div>
-
-        <!-- Результат -->
         <div id="result"></div>
 
-        <!-- Технические детали -->
         <details>
           <summary>Показать технические детали</summary>
           <div id="techDetails" style="margin-top:6px; font-size:11px; font-family:monospace;"></div>
@@ -274,14 +158,9 @@
       </div>
     </div>
 
-    <!-- ============================ -->
-    <!-- ПРАВАЯ ЧАСТЬ С КАРТОЙ        -->
-    <!-- ============================ -->
     <div id="map-wrapper">
       <div id="map"></div>
-      <div id="map-hint">
-        Введите ключ администратора, чтобы начать
-      </div>
+      <div id="map-hint">Введите ключ администратора, чтобы начать</div>
     </div>
 
   </div>
@@ -291,36 +170,28 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
     // ============================================================
-    // Шаг 9.1: HTML-каркас. Логика будет в следующих частях.
+    // Конструктор карт. Часть 9.1 + 9.2
     // ============================================================
 
     const ADMIN_BASE_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1';
     let adminKey = localStorage.getItem('adminKey') || '';
 
-    // Карта инициализируется сразу, чтобы её было видно ещё до ввода ключа.
+    // Карта
     const map = L.map('map').setView([55.75, 37.62], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OSM'
     }).addTo(map);
 
-    // Пока подключаем только сохранение ключа и восстановление из localStorage.
-    // Всё остальное (маршрут, сети, создание карты) — в следующих частях.
+    // Состояние
+    let allNetworks = [];
+    let allStations = [];
+    let stationsLayer = null;
+    let routeLineLayer = null;
+    let routePoints = [];
+    let routeGeojson = null;
+    let stationsOnRoute = [];
 
-    if (adminKey) {
-          // ============================================================
-    // Шаг 9.2. Загрузка данных и отрисовка станций
-    // ============================================================
-
-    // Глобальное состояние конструктора
-    let allNetworks = [];       // массив сетей из БД
-    let allStations = [];       // массив станций из БД
-    let stationsLayer = null;   // слой Leaflet с точками станций
-    let routeLineLayer = null;  // слой Leaflet с линией маршрута
-    let routePoints = [];       // точки маршрута: [{lat, lng, marker}]
-    let routeGeojson = null;    // геометрия последнего построенного маршрута
-    let stationsOnRoute = [];   // станции вдоль маршрута (если маршрут построен)
-
-    // ---------- Инициализация после ввода ключа ----------
+    // ---------- Инициализация ----------
     async function initBuilder() {
       setStatus('Загрузка данных...');
       try {
@@ -341,52 +212,40 @@
       }
     }
 
-    // Автозапуск, если ключ уже был сохранён ранее
     if (adminKey) {
       document.getElementById('adminKey').value = adminKey;
       document.getElementById('authSection').style.display = 'block';
       initBuilder();
     }
 
-    // ---------- Сохранение ключа ----------
     function saveAdminKey() {
       const key = document.getElementById('adminKey').value.trim();
-      if (!key) {
-        alert('Введите ключ');
-        return;
-      }
+      if (!key) { alert('Введите ключ'); return; }
       adminKey = key;
       localStorage.setItem('adminKey', key);
       document.getElementById('authSection').style.display = 'block';
       initBuilder();
     }
 
-    // ---------- Универсальный запрос к admin-data ----------
+    // ---------- Запросы ----------
     async function fetchAdmin(type, extra) {
       let url = `${ADMIN_BASE_URL}/admin-data?type=${type}`;
       if (extra) url += '&' + extra;
-      const response = await fetch(url, {
-        headers: { 'x-admin-key': adminKey }
-      });
-      if (!response.ok) {
-        throw new Error(`admin-data?type=${type} → ${response.status}`);
-      }
+      const response = await fetch(url, { headers: { 'x-admin-key': adminKey } });
+      if (!response.ok) throw new Error(`admin-data?type=${type} → ${response.status}`);
       return response.json();
     }
 
-    // ---------- Загрузка сетей ----------
     async function loadNetworks() {
       const data = await fetchAdmin('networks');
       allNetworks = Array.isArray(data) ? data : [];
     }
 
-    // ---------- Загрузка станций ----------
     async function loadStations() {
       const data = await fetchAdmin('stations');
       allStations = Array.isArray(data) ? data : [];
     }
 
-    // ---------- Загрузка ценовых листов в select ----------
     async function loadPriceLists() {
       const data = await fetchAdmin('price_lists');
       const select = document.getElementById('priceListSelect');
@@ -401,7 +260,6 @@
       }
     }
 
-    // ---------- Загрузка регионов в select ----------
     async function loadRegions() {
       const data = await fetchAdmin('regions');
       const select = document.getElementById('areaSelect');
@@ -416,26 +274,18 @@
       }
     }
 
-    // ---------- Отрисовка станций на карте ----------
+    // ---------- Отрисовка станций ----------
     function drawStations(stations) {
-      if (stationsLayer) {
-        map.removeLayer(stationsLayer);
-      }
+      if (stationsLayer) map.removeLayer(stationsLayer);
       stationsLayer = L.layerGroup().addTo(map);
 
       stations.forEach(station => {
         if (!station.lat || !station.lon) return;
-
         const color = colorForNetwork(station.networks);
-
         const marker = L.circleMarker([station.lat, station.lon], {
-          radius: 6,
-          fillColor: color,
-          color: '#fff',
-          weight: 1.5,
-          fillOpacity: 0.9
+          radius: 6, fillColor: color, color: '#fff',
+          weight: 1.5, fillOpacity: 0.9
         });
-
         let popup = `<b>${station.name || 'АЗС'}</b><br>`;
         if (station.networks && station.networks.name) {
           popup += `Сеть: ${station.networks.name}<br>`;
@@ -443,51 +293,42 @@
         if (station.address) popup += `${station.address}<br>`;
         if (station.region) popup += `Регион: ${station.region}`;
         marker.bindPopup(popup);
-
         marker.addTo(stationsLayer);
       });
     }
 
-    // Цвет маркера по color_code сети
     function colorForNetwork(network) {
       if (!network) return '#1E88E5';
       switch (network.color_code) {
-        case 1: return '#43A047'; // зелёный
-        case 2: return '#FF9800'; // оранжевый
-        case 3: return '#1E88E5'; // синий
-        default: return '#607D8B'; // авто / серый
+        case 1: return '#43A047';
+        case 2: return '#FF9800';
+        case 3: return '#1E88E5';
+        default: return '#607D8B';
       }
     }
 
-    // ---------- Список сетей с чекбоксами ----------
+    // ---------- Список сетей ----------
     function renderNetworksList(networks) {
       const container = document.getElementById('networksList');
       if (!networks.length) {
         container.innerHTML = '<div class="list-item disabled">Сетей нет</div>';
         return;
       }
-      // Считаем количество станций по каждой сети
       const counts = {};
       allStations.forEach(s => {
-        if (s.network_id) {
-          counts[s.network_id] = (counts[s.network_id] || 0) + 1;
-        }
+        if (s.network_id) counts[s.network_id] = (counts[s.network_id] || 0) + 1;
       });
 
       container.innerHTML = '';
-      networks
-        .slice()
-        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      networks.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         .forEach(net => {
           const item = document.createElement('label');
           item.className = 'list-item';
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.value = net.id;
-          checkbox.dataset.networkId = net.id;
           checkbox.className = 'network-checkbox';
           checkbox.addEventListener('change', () => {
-            // Здесь позже будем фильтровать станции. Пока просто сообщаем в статус.
             const selected = getSelectedNetworkIds();
             if (selected.length === 0) {
               setStatus('Сети не выбраны — будут показаны все станции.', '');
@@ -512,14 +353,11 @@
 
     // ---------- Хелперы ----------
     function getSelectedNetworkIds() {
-      return Array.from(document.querySelectorAll('.network-checkbox:checked'))
-        .map(cb => cb.value);
+      return Array.from(document.querySelectorAll('.network-checkbox:checked')).map(cb => cb.value);
     }
 
     function selectAllNetworks(check) {
-      document.querySelectorAll('.network-checkbox').forEach(cb => {
-        cb.checked = check;
-      });
+      document.querySelectorAll('.network-checkbox').forEach(cb => { cb.checked = check; });
       setStatus(check ? 'Отмечены все сети.' : 'Сети не выбраны — будут показаны все станции.', '');
     }
 
@@ -535,27 +373,23 @@
       btn.disabled = routePoints.length < 2;
     }
 
-    // ---------- Заглушка: сброс точек маршрута ----------
-    // Полная логика — в шаге 9.3.
+    // ---------- Заглушки (заполним в 9.3) ----------
     function clearRoutePoints() {
-      routePoints.forEach(p => {
-        if (p.marker) map.removeLayer(p.marker);
-      });
+      routePoints.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
       routePoints = [];
       routeGeojson = null;
-      if (routeLineLayer) {
-        map.removeLayer(routeLineLayer);
-        routeLineLayer = null;
-      }
+      if (routeLineLayer) { map.removeLayer(routeLineLayer); routeLineLayer = null; }
       document.getElementById('routeInfo').textContent = '';
       updateBuildButtonState();
       setStatus('Точки маршрута сброшены.', '');
     }
 
-    // ---------- Заглушка: построение маршрута ----------
-    // Полная логика — в шаге 9.3.
     function buildRoute() {
       setStatus('Построение маршрута будет добавлено в шаге 9.3.', '');
+    }
+
+    function createCard() {
+      setStatus('Создание карты будет добавлено в шаге 9.4.', '');
     }
   </script>
 </body>
