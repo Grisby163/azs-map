@@ -116,11 +116,10 @@
 <body>
   <div class="control-panel">
     <div id="fuel-panel"></div>
-    <div id="route-panel"></div>
   </div>
   <div id="map"></div>
   <div class="network-panel" id="network-panel">
-    <h4>АЗС на маршруте (5 км)</h4>
+    <h4>АЗС на карте</h4>
     <div class="network-list" id="network-list"></div>
     <button class="download-btn" onclick="downloadExcel()">📥 Скачать Excel</button>
   </div>
@@ -487,13 +486,11 @@
           const area = meta.area || 'России';
           const showGreetingFlag = meta.show_greeting !== false;
           buildFuelButtons();
-          buildRouteButtons();
           applyFilters();
           showGreeting(area, showGreetingFlag);
         } else {
           allStations = data;
           buildFuelButtons();
-          buildRouteButtons();
           applyFilters();
         }
       })
