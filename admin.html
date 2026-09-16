@@ -871,11 +871,14 @@ async function savePrice(stationId) {
      // ============================================================
     // Шаг 15. Аналитика. Заглушка для дублирования (шаг 13).
     // ============================================================
-        function duplicateCard(token) {
-      // Открываем конструктор в новой вкладке с исходным токеном.
-      // Конструктор сам подтянет параметры карты.
-      const url = `/builder.html?from_token=${encodeURIComponent(token)}`;
-      window.open(url, '_blank');
+            function duplicateCard(token) {
+      const url = `${window.location.origin}/builder.html?from_token=${encodeURIComponent(token)}`;
+      const w = window.open(url, '_blank');
+      // Opera и другие браузеры могут блокировать попапы.
+      // Если попап не открылся — переходим в текущей вкладке.
+      if (!w || w.closed || typeof w.closed === 'undefined') {
+        window.location.href = url;
+      }
     }
   </script>
 </body>
