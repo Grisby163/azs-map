@@ -130,7 +130,20 @@
         </div>
         <div id="pointModeInfo" style="font-size:12px; color:#666; margin-top:6px;"></div>
         <div id="routeInfo" style="font-size:12px; color:#555; margin-top:8px;"></div>
-
+                <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #ccc;">
+          <label style="font-size:12px; font-weight:bold;">Шаблоны маршрутов</label>
+          <div style="display:flex; gap:6px; margin-top:6px;">
+            <select id="routeTemplateSelect" style="flex:1; padding:6px 8px; border:1px solid #ccc; border-radius:5px; font-size:13px;">
+              <option value="">— выбрать шаблон —</option>
+            </select>
+          </div>
+          <div style="margin-top:6px;">
+            <button onclick="loadTemplate()" id="loadTemplateBtn" class="secondary" style="font-size:12px; padding:5px 10px;" disabled>Загрузить</button>
+            <button onclick="saveAsTemplate()" id="saveTemplateBtn" class="secondary" style="font-size:12px; padding:5px 10px;" disabled>Сохранить как шаблон</button>
+            <button onclick="deleteTemplate()" id="deleteTemplateBtn" class="secondary" style="font-size:12px; padding:5px 10px; background:#d32f2f;" disabled>Удалить</button>
+          </div>
+          <div id="templateInfo" style="font-size:11px; color:#666; margin-top:6px;"></div>
+        </div>
         <h2>2. Сети</h2>
         <p style="font-size:12px; color:#666; margin-top:0;">
           Отметьте сети, которые нужно показать. Если ни одна не отмечена — покажем все станции.
