@@ -347,7 +347,7 @@ async function updateNetwork(id, field, value) {
   }
 }
 
-    async function loadTokens() {
+       async function loadTokens() {
       try {
         const data = await fetchAdmin('tokens');
         const container = document.getElementById('tokensTable');
@@ -355,16 +355,59 @@ async function updateNetwork(id, field, value) {
           container.innerHTML = '<p>Нет данных</p>';
           return;
         }
-        let html = '<table><tr><th>Клиент</th><th>Токен</th><th>Область</th><th>Ценовой лист</th><th>Создан</th><th>Просмотры</th><th>Короткая ссылка</th></tr>';
+
+        const now = new Date();
+
+        let html = '<table><tr>' +
+          '<th>Клиент</th>' +
+          '<th>Токен</th>' +
+          '<th>Область</th>' +
+          '<th>Ценовой лист</th>' +
+          '<th>Создан</th>' +
+          '<th>Просмотры</th>' +
+          '<th>Последний просмотр</th>' +
+          '<th>Истекает через</th>' +
+          '<th>Короткая ссылка</th>' +
+          '<th>Действия</th>' +
+          '</tr>';
+
         data.forEach(t => {
+          // Последний просмотр.
+          const lastViewed = t.last_viewed_at
+            ? new Date(t.last_viewed_at).toLocaleString('ru-RU')
+            : '<span style="color:#999;">не открывали</span>';
+
+          // Дней до истечения.
+          let expiryHtml = '<span style="color:#999;">—</span>';
+          if (t.expires_at) {
+            const expires = new Date(t.expires_at);
+            const daysLeft = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
+            if (daysLeft < 0) {
+              expiryHtml = '<span style="color:#d32f2f; font-weight:bold;">истёк</span>';
+            } else if (daysLeft === 0) {
+              expiryHtml = '<span style="color:#d32f2f; font-weight:bold;">сегодня</span>';
+            } else if (daysLeft <= 2) {
+              expiryHtml = `<span style="color:#FF9800; font-weight:bold;">${daysLeft} дн.</span>`;
+            } else {
+              expiryHtml = `<span style="color:#2e7d32;">${daysLeft} дн.</span>`;
+            }
+          }
+
+          // Кнопки действий.
+          const actions =
+            `<button onclick="duplicateCard('${t.token}')" class="secondary" style="font-size:11px; padding:3px 8px;">Дублировать</button>`;
+
           html += `<tr>
             <td>${t.client_name || ''}</td>
-            <td>${t.token}</td>
+            <td style="font-family:monospace; font-size:11px;">${t.token}</td>
             <td>${t.area || ''}</td>
             <td>${t.price_lists?.name || ''}</td>
             <td>${new Date(t.created_at).toLocaleString('ru-RU')}</td>
-            <td>${t.views}</td>
+            <td>${t.views || 0}</td>
+            <td>${lastViewed}</td>
+            <td>${expiryHtml}</td>
             <td><a href="${t.short_url}" target="_blank">${t.short_url}</a></td>
+            <td>${actions}</td>
           </tr>`;
         });
         html += '</table>';
@@ -824,6 +867,14 @@ async function savePrice(stationId) {
         statusDiv.innerHTML =
           `<span style="color:#d32f2f;">Ошибка: ${e.message}</span>`;
       }
+    }
+     // ============================================================
+    // Шаг 15. Аналитика. Заглушка для дублирования (шаг 13).
+    // ============================================================
+    function duplicateCard(token) {
+      // Полная логика будет в шаге 13. Пока просто открываем конструктор
+      // с этим токеном в URL как подсказку.
+      window.open(`/builder.html?from_token=${token}`, '_blank');
     }
   </script>
 </body>
