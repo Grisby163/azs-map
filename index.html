@@ -109,12 +109,60 @@
     .leaflet-popup-tip {
       box-shadow: none !important;
     }
-    .popup-price {
+        .popup-price {
       font-size: 17px;
       font-weight: 700;
       color: var(--accent);
-      margin-top: 6px;
-      display: inline-block;
+      margin-top: 8px;
+      display: block;
+    }
+
+    .popup-address-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .copy-addr-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      line-height: 1;
+      margin: 0;
+      box-shadow: none;
+      transition: background .15s, color .15s, border-color .15s;
+      flex-shrink: 0;
+    }
+    .copy-addr-btn:hover {
+      background: var(--warn-bg);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: none;
+      transform: none;
+    }
+
+    .popup-region {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .popup-discount {
+      margin-top: 8px;
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .popup-no-price {
+      margin-top: 8px;
+      color: var(--text-muted);
+      font-style: italic;
     }
     .market-info {
       font-size: 12px;
@@ -523,13 +571,22 @@
           fillOpacity: 0.9
         }).addTo(markersLayer);
 
-        let popupContent = `<b>${station.name || 'АЗС'}</b><br>`;
-        popupContent += station.address ? `${station.address}<br>` : '';
+               let popupContent = `<b>${station.name || 'АЗС'}</b>`;
+
+        // Адрес + кнопка «копировать».
+        if (station.address) {
+          popupContent += `<div class="popup-address-row">`;
+          popupContent += `<span>${station.address}</span>`;
+          popupContent += `<button class="copy-addr-btn" title="Скопировать адрес" onclick="copyAddressById('${station.id}', this)">📋</button>`;
+          popupContent += `</div>`;
+        }
+
+        // Цена — отдельным блоком.
         if (price) {
           if (price.is_discount) {
-            popupContent += `<div>Скидка: ${price.discount_text || 'уточняйте'}</div>`;
+            popupContent += `<div class="popup-discount">Скидка: ${price.discount_text || 'уточняйте'}</div>`;
           } else {
-            popupContent += `<span class="popup-price">${price.price_value} ₽/л</span>`;
+            popupContent += `<div class="popup-price">${price.price_value} ₽/л</div>`;
             if (station.market_price && !isNaN(station.market_price)) {
               const market = parseFloat(station.market_price);
               const diff = market - price.price_value;
@@ -540,9 +597,14 @@
             }
           }
         } else {
-          popupContent += `<div>Цена не указана для ${currentFuel}</div>`;
+          popupContent += `<div class="popup-no-price">Цена не указана для ${currentFuel}</div>`;
         }
-        popupContent += station.region ? `Регион: ${station.region}` : '';
+
+        // Регион — отдельной строкой с отступом.
+        if (station.region) {
+          popupContent += `<div class="popup-region">Регион: ${station.region}</div>`;
+        }
+
         marker.bindPopup(popupContent);
       });
 
@@ -627,7 +689,52 @@
         routeName: clientMapTitle || 'Карта АЗС'
       };
     }
+      // ============================================================
+    // Копирование адреса станции из попапа
+    // ============================================================
+    function copyAddressById(stationId, btnEl) {
+      const station = filteredStations.find(s => s.id === stationId);
+      if (!station || !station.address) return;
+      const text = station.address;
 
+      const onDone = () => {
+        if (btnEl) {
+          const old = btnEl.textContent;
+          btnEl.textContent = '✓';
+          btnEl.style.color = '#16A34A';
+          btnEl.style.borderColor = '#16A34A';
+          setTimeout(() => {
+            btnEl.textContent = old;
+            btnEl.style.color = '';
+            btnEl.style.borderColor = '';
+          }, 1200);
+        }
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onDone).catch(() => {
+          fallbackCopyAddress(text, onDone);
+        });
+      } else {
+        fallbackCopyAddress(text, onDone);
+      }
+    }
+
+    function fallbackCopyAddress(text, cb) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        if (cb) cb();
+      } catch (e) {
+        console.warn('Не удалось скопировать адрес:', e);
+      }
+      document.body.removeChild(ta);
+    }
        window.downloadExcel = function() {
       if (!window._networkData) return;
       const data = window._networkData;
