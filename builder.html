@@ -343,17 +343,92 @@
     .route-point-label::before { display: none !important; }
 
     /* ---------- Адаптивность ---------- */
+        /* ============================================================
+       Шаг 16.5. Адаптив конструктора
+       ============================================================ */
+
+    /* Планшет: до 1024 px — узкая панель, карта больше. */
+    @media (max-width: 1024px) {
+      #sidebar { width: 340px; min-width: 340px; padding: 18px 16px 28px; }
+    }
+
+    /* Узкий планшет и телефон: до 820 px — вертикальная раскладка. */
     @media (max-width: 820px) {
       #layout { flex-direction: column; }
+
       #sidebar {
         width: 100%;
         min-width: 0;
-        height: 50vh;
+        height: 55vh;
         border-right: none;
         border-bottom: 1px solid var(--border);
+        padding: 16px 14px 22px;
       }
-      #map-wrapper { height: 50vh; }
+
+      #map-wrapper { height: 45vh; flex: none; }
+
+      #map-hint {
+        top: 8px;
+        padding: 8px 14px;
+        font-size: 12px;
+        max-width: calc(100% - 20px);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #sidebar h1 { font-size: 19px; margin-bottom: 14px; }
+      #sidebar h2 { font-size: 13px; margin: 16px 0 8px; }
+
+      /* Прогресс-шаги — компактнее, чтобы влезли в строку. */
+      .progress-steps { padding: 8px 8px; gap: 3px; }
+      .progress-step { font-size: 10px; padding: 5px 2px; }
+      .progress-step .num { width: 18px; height: 18px; font-size: 10px; margin-right: 2px; }
+
+      /* Формы — крупнее для пальца. */
+      .form-group input[type="text"],
+      .form-group input[type="password"],
+      .form-group input[type="number"],
+      .form-group select {
+        font-size: 15px;
+        padding: 10px 12px;
+      }
+      .form-group label { font-size: 13px; }
+
+      button {
+        padding: 11px 16px;
+        font-size: 14px;
+        min-height: 40px;
+      }
+
+      /* Список сетей — с увеличенной зоной клика. */
+      .list-item { padding: 10px 8px; }
+      .list-item input[type="checkbox"] { width: 18px; height: 18px; }
+      .list-box { max-height: 200px; }
+
+      /* Статус и результат. */
+      #status { font-size: 13px; padding: 10px 12px; }
+      #result { padding: 14px; }
     }
+
+    /* Совсем узкие экраны: до 480 px */
+    @media (max-width: 480px) {
+      #sidebar { height: 60vh; padding: 14px 12px 20px; }
+      #map-wrapper { height: 40vh; }
+
+      /* Прогресс-шаги — только номера, без подписей. */
+      .progress-step { font-size: 0; padding: 5px 4px; }
+      .progress-step .num { margin: 0; }
+      .progress-step.active { font-size: 0; }
+
+      .form-group input[type="text"],
+      .form-group input[type="password"],
+      .form-group input[type="number"],
+      .form-group select {
+        font-size: 16px; /* чтобы iOS не зумил */
+      }
+    }
+  </style>
   </style>
 </head>
 <body>
