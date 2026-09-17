@@ -184,7 +184,9 @@
         <button onclick="createCard()" id="createCardBtn" style="width:100%; margin-top:10px; font-size:14px; padding:10px;">
           Создать карту
         </button>
-
+                 <button onclick="downloadGeoJSON()" id="downloadGeoJSONBtn" class="secondary" style="width:100%; margin-top:8px; font-size:13px; padding:8px;">
+          📥 Скачать GeoJSON
+        </button>
         <div id="status"></div>
         <div id="result"></div>
 
@@ -1139,7 +1141,101 @@
         document.getElementById('createCardBtn').disabled = false;
       }
     }
+        // ============================================================
+    // Шаг 14. Экспорт GeoJSON: маршрут + станции
+    // ============================================================
 
+    function downloadGeoJSON() {
+      // Определяем список станций для экспорта.
+      // Если маршрут построен — берём станции вдоль него.
+      // Иначе — все видимые станции.
+      let stationsToExport = [];
+
+      if (routeGeojson && stationsOnRoute.length > 0) {
+        // Станции вдоль маршрута, при желании отфильтровать по выбранным сетям.
+        const selectedNetworks = getSelectedNetworkIds();
+        stationsToExport = selectedNetworks.length > 0
+          ? stationsOnRoute.filter(s => selectedNetworks.includes(s.network_id))
+          : stationsOnRoute;
+      } else {
+        stationsToExport = allStations;
+      }
+
+      if (!routeGeojson && stationsToExport.length === 0) {
+        setStatus('Нечего экспортировать: нет ни маршрута, ни станций.', 'error');
+        return;
+      }
+
+      const features = [];
+
+      // 1. Линия маршрута (если есть).
+      if (routeGeojson) {
+        features.push({
+          type: 'Feature',
+          properties: {
+            kind: 'route',
+            title: document.getElementById('mapTitle').value.trim() || '',
+            radius_km: parseFloat(document.getElementById('radiusKm').value) || 5,
+            generated_at: new Date().toISOString()
+          },
+          geometry: routeGeojson
+        });
+      }
+
+      // 2. Станции.
+      stationsToExport.forEach(station => {
+        if (!station.lat || !station.lon) return;
+
+        const price = pricesCache[station.id];
+
+        features.push({
+          type: 'Feature',
+          properties: {
+            kind: 'station',
+            id: station.id,
+            name: station.name || '',
+            address: station.address || '',
+            region: station.region || '',
+            network: (station.networks && station.networks.name) || station.network_name || '',
+            price_value: price && !price.is_discount ? price.price_value : null,
+            is_discount: price ? !!price.is_discount : false,
+            discount_text: price ? (price.discount_text || '') : ''
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [station.lon, station.lat]
+          }
+        });
+      });
+
+      const geojson = {
+        type: 'FeatureCollection',
+        features
+      };
+
+      // Имя файла: заголовок карты или «маршрут», + дата.
+      const titlePart = (document.getElementById('mapTitle').value.trim() || 'маршрут')
+        .replace(/[^\wа-яА-ЯёЁ\-]+/g, '_')
+        .slice(0, 40);
+      const datePart = new Date().toISOString().slice(0, 10);
+      const filename = `${titlePart}_${datePart}.geojson`;
+
+      // Скачиваем файл.
+      const blob = new Blob(
+        [JSON.stringify(geojson, null, 2)],
+        { type: 'application/geo+json' }
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setStatus(`GeoJSON скачан: ${filename} (станций: ${stationsToExport.length}).`, 'success');
+    }
     // ---------- Копирование в буфер обмена ----------
     function copyToClipboard(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
