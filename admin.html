@@ -235,14 +235,102 @@
     a:hover { text-decoration: underline; }
 
     /* ---------- Адаптивность ---------- */
-    @media (max-width: 720px) {
-      body { padding: 12px; }
-      .container { padding: 18px 16px; border-radius: var(--radius-md); }
-      .tabs { gap: 4px; padding: 4px; }
-      .tab { padding: 7px 12px; font-size: 12px; }
-      h1 { font-size: 22px; }
-      th, td { padding: 8px 8px; font-size: 12px; }
+        /* ============================================================
+       Шаг 16.5. Адаптив админки
+       ============================================================ */
+
+    /* Планшет: 721–1024 px */
+    @media (max-width: 1024px) {
+      .container { max-width: 100%; padding: 22px 20px; }
     }
+
+    /* Узкий планшет и телефон: до 720 px */
+    @media (max-width: 720px) {
+      body { padding: 10px; }
+      .container { padding: 16px 14px; border-radius: var(--radius-md); }
+      h1 { font-size: 20px; margin-bottom: 14px; }
+      h2 { font-size: 16px; }
+      h3 { font-size: 14px; }
+
+      /* Табы — горизонтальный скролл, чтобы не сжимались. */
+      .tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        padding: 4px;
+        gap: 4px;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab {
+        padding: 8px 14px;
+        font-size: 12.5px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        min-height: 34px;
+      }
+
+      /* Формы — крупнее и удобнее пальцу. */
+      input[type="text"],
+      input[type="password"],
+      input[type="number"],
+      select,
+      textarea {
+        font-size: 15px;
+        padding: 11px 12px;
+      }
+      button {
+        padding: 11px 18px;
+        font-size: 14px;
+        min-height: 40px;
+      }
+
+      /* Таблицы — горизонтальный скролл, чтобы не ломались колонки. */
+      #tokensTable,
+      #networksTable,
+      #stationsTable,
+      #priceListsTable,
+      #pricesTable,
+      #unmatchedStations {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-top: 12px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-soft);
+      }
+      #tokensTable table,
+      #networksTable table,
+      #stationsTable table,
+      #priceListsTable table,
+      #pricesTable table {
+        min-width: 640px;
+        box-shadow: none;
+        margin-top: 0;
+      }
+      th, td {
+        padding: 9px 10px;
+        font-size: 12.5px;
+        white-space: nowrap;
+      }
+
+      /* Кнопки в строках — компактнее. */
+      table button { padding: 7px 10px; font-size: 12px; min-height: 32px; }
+
+      /* Сводка импорта. */
+      #importStatus { font-size: 13px; }
+    }
+
+    /* Совсем узкие экраны: до 480 px */
+    @media (max-width: 480px) {
+      body { padding: 6px; }
+      .container { padding: 12px 10px; }
+      h1 { font-size: 18px; }
+      .tab { padding: 7px 10px; font-size: 12px; }
+      input[type="text"], input[type="password"], input[type="number"], select {
+        font-size: 16px; /* iOS не зумит при фокусе */
+      }
+    }
+  </style>
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
