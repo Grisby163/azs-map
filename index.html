@@ -116,7 +116,6 @@
       margin-top: 8px;
       display: block;
     }
-
     .popup-address-row {
       display: flex;
       align-items: center;
@@ -611,26 +610,28 @@
       return station.prices.find(p => p.fuel_type === fuel) || null;
     }
 
-    function getMarkerColor(station, price) {
-      if (station.color_code === 1) return '#43A047';
-      if (station.color_code === 2) return '#FF9800';
-      if (station.color_code === 3) return '#1E88E5';
+        function getMarkerColor(station, price) {
+      // Явно заданные цвета сетей в админке.
+      if (station.color_code === 1) return '#43A047'; // зелёный
+      if (station.color_code === 2) return '#FF9800'; // оранжевый
+      if (station.color_code === 3) return '#1E88E5'; // синий
 
+      // Авто (color_code 0): синий — только для скидок/наценок/Газа/без цены.
       if (!price || price.is_discount) return '#1E88E5';
       if (currentFuel === 'Газ') return '#1E88E5';
 
+      // Авто: градация по цене.
+      // Дешевле средней — зелёный, средняя и дороже — оранжевый.
       const validPrices = filteredStations
         .map(s => getPriceForFuel(s, currentFuel))
         .filter(p => p && !p.is_discount && p.price_value > 0)
         .map(p => p.price_value);
+
       if (validPrices.length === 0) return '#1E88E5';
-      const min = Math.min(...validPrices);
-      const max = Math.max(...validPrices);
-      const range = max - min || 1;
-      const ratio = (price.price_value - min) / range;
-      if (ratio < 0.3) return '#43A047';
-      else if (ratio < 0.7) return '#FF9800';
-      else return '#1E88E5';
+
+      const avg = validPrices.reduce((sum, v) => sum + v, 0) / validPrices.length;
+      if (price.price_value < avg) return '#43A047'; // зелёный — дешевле среднего
+      return '#FF9800'; // оранжевый — средняя и дороже
     }
     function applyFilters() {
       // Фильтруем только по топливу — станции уже отфильтрованы сервером
@@ -652,8 +653,16 @@
       }
     }
 
-    function displayStations(stations) {
+        function displayStations(stations) {
       markersLayer.clearLayers();
+
+      // Определяем лучшую цену для текущего топлива, чтобы подсветить её зелёным.
+      const validPrices = stations
+        .map(s => getPriceForFuel(s, currentFuel))
+        .filter(p => p && !p.is_discount && p.price_value > 0)
+        .map(p => p.price_value);
+      const bestPrice = validPrices.length > 0 ? Math.min(...validPrices) : null;
+
       stations.forEach(station => {
         const price = getPriceForFuel(station, currentFuel);
         const color = getMarkerColor(station, price);
@@ -675,12 +684,12 @@
           popupContent += `</div>`;
         }
 
-        // Цена — отдельным блоком.
+                // Цена — отдельным блоком, цвет берётся от маркера.
         if (price) {
           if (price.is_discount) {
-            popupContent += `<div class="popup-discount">Скидка: ${price.discount_text || 'уточняйте'}</div>`;
+            popupContent += `<div class="popup-discount" style="color:${color}">Скидка: ${price.discount_text || 'уточняйте'}</div>`;
           } else {
-            popupContent += `<div class="popup-price">${price.price_value} ₽/л</div>`;
+            popupContent += `<div class="popup-price" style="color:${color}">${price.price_value} ₽/л</div>`;
             if (station.market_price && !isNaN(station.market_price)) {
               const market = parseFloat(station.market_price);
               const diff = market - price.price_value;
@@ -691,7 +700,7 @@
             }
           }
         } else {
-          popupContent += `<div class="popup-no-price">Цена не указана для ${currentFuel}</div>`;
+          popupContent += `<div class="popup-no-price" style="color:${color}">Цена не указана для ${currentFuel}</div>`;
         }
 
         // Регион — отдельной строкой с отступом.
