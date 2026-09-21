@@ -532,7 +532,7 @@
     const GH_API_KEY = 'a4b49645-1e81-4a2e-a019-741d76b2903c'; // замените при необходимости
 
     // Инициализация Leaflet
-    const map = L.map('map').setView([55.75, 37.62], 10);
+    const map = L.map('map', { attributionControl: false }).setView([55.75, 37.62], 10);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OSM'
     }).addTo(map);
