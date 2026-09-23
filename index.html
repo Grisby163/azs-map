@@ -306,7 +306,136 @@
       border-radius: 6px;
       display: inline-block;
     }
+    /* ---------- Раскрывающиеся сети и сворачивание панели ---------- */
+    .network-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .network-header h4 {
+      margin: 0;
+    }
+    .panel-toggle {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: none; /* видно только на мобильной */
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0;
+      line-height: 1;
+      transition: background .15s, color .15s;
+    }
+    .panel-toggle:hover {
+      background: var(--warn-bg);
+      color: var(--accent);
+    }
 
+    /* Раскрывающаяся сеть */
+    .network-item-clickable {
+      cursor: pointer;
+      user-select: none;
+    }
+    .network-item-clickable .network-arrow {
+      display: inline-block;
+      margin-left: 6px;
+      transition: transform .2s;
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+    .network-item-clickable.expanded .network-arrow {
+      transform: rotate(90deg);
+    }
+    .network-item.cheapest {
+      background: linear-gradient(135deg, rgba(22, 163, 74, 0.15) 0%, rgba(22, 163, 74, 0.06) 100%);
+      border: 1px solid rgba(22, 163, 74, 0.35);
+      border-radius: 8px;
+      margin: 4px 0;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+    .network-item.cheapest .network-price {
+      color: #16A34A;
+      font-size: 15px;
+    }
+    .network-price {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .network-region {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Список АЗС внутри сети */
+    .network-stations {
+      display: none;
+      padding: 4px 8px 8px 24px;
+      background: rgba(250, 246, 241, 0.5);
+      border-radius: 8px;
+      margin-top: 2px;
+    }
+    .network-stations.expanded {
+      display: block;
+    }
+    .station-row {
+      padding: 8px 6px;
+      border-bottom: 1px solid rgba(232, 225, 216, 0.6);
+      cursor: pointer;
+      transition: background .15s;
+      border-radius: 6px;
+    }
+    .station-row:last-child {
+      border-bottom: none;
+    }
+    .station-row:hover {
+      background: rgba(255, 255, 255, 0.8);
+    }
+    .station-row-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .station-row-addr {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .station-row-price {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+
+    /* Свёрнутая панель на мобильной */
+    @media (max-width: 820px) {
+      .panel-toggle {
+        display: inline-flex;
+      }
+      .network-panel.collapsed {
+        max-height: 52px;
+        overflow: hidden;
+      }
+      .network-panel.collapsed .network-header {
+        margin-bottom: 0;
+      }
+      .network-panel.collapsed .network-list,
+      .network-panel.collapsed .download-btn {
+        display: none;
+      }
+      .network-panel.collapsed .panel-toggle {
+        transform: rotate(180deg);
+      }
+    }
     /* ---------- Правая панель сетей ---------- */
     .network-panel {
       position: absolute;
@@ -627,8 +756,11 @@
     <div id="fuel-panel"></div>
   </div>
   <div id="map"></div>
-  <div class="network-panel" id="network-panel">
-    <h4>АЗС на карте</h4>
+    <div class="network-panel" id="network-panel">
+    <div class="network-header">
+      <h4>АЗС на маршруте</h4>
+      <button class="panel-toggle" onclick="togglePanel()" title="Свернуть">▼</button>
+    </div>
     <div class="network-list" id="network-list"></div>
     <button class="download-btn" onclick="downloadExcel()">📥 Скачать Excel</button>
   </div>
@@ -943,41 +1075,164 @@
       return `https://yandex.ru/maps/?rtext=${coordsStr}&rtt=auto`;
     }
 
+        // ============================================================
+    // Пункт 5. Панель сетей: раскрытие, сортировка, центрирование на АЗС
+    // ============================================================
+
+    // Хранит данные о сетях и станциях, чтобы обрабатывать клики.
+    let networksData = {};
+
     function updateNetworkPanel(stations) {
-      const networks = {};
+      // Группируем станции по сетям.
+      const byNetwork = {};
       stations.forEach(station => {
-        const net = station.network_name || 'Прочие';
-        const price = getPriceForFuel(station, currentFuel);
-        if (!price || price.is_discount) return;
-        const numPrice = price.price_value;
-        if (!networks[net]) {
-          networks[net] = { price: numPrice, count: 0, color: getMarkerColor(station, price) };
-        } else {
-          if (numPrice < networks[net].price) {
-            networks[net].price = numPrice;
-            networks[net].color = getMarkerColor(station, price);
+        const netName = station.network_name || 'Прочие';
+        if (!byNetwork[netName]) {
+          byNetwork[netName] = {
+            name: netName,
+            region: station.region || '',
+            stations: [],
+            minPrice: null,
+            minPriceText: null,
+            color: getMarkerColor(station, getPriceForFuel(station, currentFuel))
+          };
+        }
+        const p = getPriceForFuel(station, currentFuel);
+        if (p && !p.is_discount && p.price_value > 0) {
+          if (byNetwork[netName].minPrice === null || p.price_value < byNetwork[netName].minPrice) {
+            byNetwork[netName].minPrice = p.price_value;
+          }
+        } else if (p && p.is_discount) {
+          // У сети только текстовые цены — берём первую как ориентир.
+          if (byNetwork[netName].minPriceText === null) {
+            byNetwork[netName].minPriceText = p.discount_text || 'условие';
           }
         }
-        networks[net].count++;
+        byNetwork[netName].stations.push(station);
       });
 
-      const sorted = Object.keys(networks).sort((a,b) => networks[a].price - networks[b].price);
+      // Сортируем сети по минимальной цене (числовые — вперёд, текстовые в конце).
+      const networkNames = Object.keys(byNetwork).sort((a, b) => {
+        const A = byNetwork[a], B = byNetwork[b];
+        if (A.minPrice !== null && B.minPrice !== null) return A.minPrice - B.minPrice;
+        if (A.minPrice !== null) return -1;
+        if (B.minPrice !== null) return 1;
+        return a.localeCompare(b);
+      });
+
+      // Самая дешёвая сеть.
+      const cheapestNet = networkNames.length > 0 && byNetwork[networkNames[0]].minPrice !== null
+        ? networkNames[0] : null;
+
+      // Формируем HTML.
       const listDiv = document.getElementById('network-list');
       let html = '';
-      sorted.forEach(net => {
-        const nd = networks[net];
-        const colorClass = nd.color === '#43A047' ? 'opt' : 'best';
-        html += `<div class="network-item ${colorClass}">
-          <span><span class="dot-indicator" style="background:${nd.color}"></span>${net} (${nd.count})</span>
-          <span>${nd.price.toFixed(2)} ₽/л</span>
-        </div>`;
-      });
-      listDiv.innerHTML = html || 'Нет станций с ценами';
-            window._networkData = {
-        nets: sorted,
-        details: networks,
+      if (networkNames.length === 0) {
+        html = '<div style="color:#888; text-align:center; padding:12px;">Нет станций с ценами</div>';
+      } else {
+        networkNames.forEach(netName => {
+          const net = byNetwork[netName];
+          const isCheapest = netName === cheapestNet;
+          const priceLabel = net.minPrice !== null
+            ? net.minPrice.toFixed(2) + ' ₽/л'
+            : (net.minPriceText ? net.minPriceText : '—');
+
+          html += `<div class="network-item network-item-clickable ${isCheapest ? 'cheapest' : ''}" data-network="${encodeURIComponent(netName)}" onclick="toggleNetwork('${encodeURIComponent(netName)}')">
+            <div>
+              <span class="dot-indicator" style="background:${net.color}"></span>
+              <span>${netName}</span>
+              ${net.region ? `<span class="network-region">${net.region}</span>` : ''}
+              <span class="network-arrow">▶</span>
+            </div>
+            <div class="network-price">${priceLabel}</div>
+          </div>
+          <div class="network-stations" id="netstations-${encodeURIComponent(netName)}"></div>`;
+        });
+      }
+      listDiv.innerHTML = html;
+
+      // Сохраняем данные для кликов.
+      networksData = byNetwork;
+
+      // Для Excel.
+      window._networkData = {
+        nets: networkNames,
+        details: Object.fromEntries(
+          networkNames.map(n => [n, { price: byNetwork[n].minPrice || 0, count: byNetwork[n].stations.length }])
+        ),
         routeName: clientMapTitle || 'Карта АЗС'
       };
+    }
+
+    // Раскрывает/сворачивает сеть и заполняет список её АЗС.
+    function toggleNetwork(encodedName) {
+      const netName = decodeURIComponent(encodedName);
+      const el = document.querySelector(`.network-item[data-network="${encodedName}"]`);
+      const listEl = document.getElementById(`netstations-${encodedName}`);
+      if (!el || !listEl) return;
+
+      const isExpanded = el.classList.contains('expanded');
+      if (isExpanded) {
+        el.classList.remove('expanded');
+        listEl.classList.remove('expanded');
+        return;
+      }
+
+      // Формируем список станций, отсортированный по цене.
+      const net = networksData[netName];
+      if (!net) return;
+      const sortedStations = net.stations.slice().sort((a, b) => {
+        const pa = getPriceForFuel(a, currentFuel);
+        const pb = getPriceForFuel(b, currentFuel);
+        const va = pa && !pa.is_discount ? pa.price_value : 99999;
+        const vb = pb && !pb.is_discount ? pb.price_value : 99999;
+        return va - vb;
+      });
+
+      let html = '';
+      sortedStations.forEach(st => {
+        const p = getPriceForFuel(st, currentFuel);
+        let priceLine = '';
+        if (p) {
+          if (p.is_discount) {
+            const upper = (p.discount_text || '').toUpperCase();
+            const c = upper.includes('НАЦЕНКА') ? '#E8720C' : '#16A34A';
+            priceLine = `<div class="station-row-price" style="color:${c};">${p.discount_text || 'условие'}</div>`;
+          } else if (p.price_value) {
+            priceLine = `<div class="station-row-price">${p.price_value.toFixed(2)} ₽/л</div>`;
+          }
+        }
+        html += `<div class="station-row" onclick="focusStation('${st.id}')">
+          <div class="station-row-name">${st.name || 'АЗС'}</div>
+          <div class="station-row-addr">${st.address || ''}</div>
+          ${priceLine}
+        </div>`;
+      });
+      listEl.innerHTML = html || '<div style="padding:6px;color:#888;">Нет станций</div>';
+
+      el.classList.add('expanded');
+      listEl.classList.add('expanded');
+    }
+
+    // Центрирует карту на выбранной АЗС и открывает попап.
+    function focusStation(stationId) {
+      const st = allStations.find(s => s.id === stationId);
+      if (!st || !st.lat || !st.lon) return;
+      const latlng = [st.lat, st.lon];
+      map.setView(latlng, Math.max(map.getZoom(), 13), { animate: true });
+      markersLayer.eachLayer(layer => {
+        const ll = layer.getLatLng && layer.getLatLng();
+        if (ll && Math.abs(ll.lat - latlng[0]) < 0.00001 && Math.abs(ll.lng - latlng[1]) < 0.00001) {
+          if (layer.openPopup) layer.openPopup();
+        }
+      });
+    }
+
+    // Сворачивает / разворачивает панель на мобильной.
+    function togglePanel() {
+      const panel = document.getElementById('network-panel');
+      if (!panel) return;
+      panel.classList.toggle('collapsed');
     }
       // ============================================================
     // Копирование адреса станции из попапа
