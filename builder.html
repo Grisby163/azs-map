@@ -691,7 +691,7 @@
 
       stations.forEach(station => {
         if (!station.lat || !station.lon) return;
-        const color = colorForNetwork(station.networks);
+                const color = colorForNetwork(station.networks, pricesCache[station.id]);
         const marker = L.circleMarker([station.lat, station.lon], {
           radius: 6, fillColor: color, color: '#fff',
           weight: 1.5, fillOpacity: 0.9
@@ -707,14 +707,20 @@
       });
     }
 
-    function colorForNetwork(network) {
-      if (!network) return '#1E88E5';
-      switch (network.color_code) {
-        case 1: return '#43A047';
-        case 2: return '#FF9800';
-        case 3: return '#1E88E5';
-        default: return '#607D8B';
+       function colorForNetwork(network, price) {
+      if (network) {
+        if (network.color_code === 1) return '#43A047';
+        if (network.color_code === 2) return '#FF9800';
+        if (network.color_code === 3) return '#1E88E5';
       }
+      // Авто или без сети: ориентируемся на цену.
+      if (!price) return '#607D8B';
+      if (price.is_discount) {
+        const text = (price.discount_text || '').toUpperCase();
+        if (text.includes('НАЦЕНКА')) return '#FF9800';
+        return '#43A047';
+      }
+      return '#607D8B';
     }
 
     // ---------- Список сетей ----------
@@ -1094,7 +1100,7 @@
       stations.forEach(station => {
         if (!station.lat || !station.lon) return;
 
-        const color = colorForNetwork(station.networks);
+                const color = colorForNetwork(station.networks, pricesCache[station.id]);
         const marker = L.circleMarker([station.lat, station.lon], {
           radius: 7,
           fillColor: color,
@@ -1109,12 +1115,15 @@
         }
         if (station.address) popup += `${station.address}<br>`;
 
-        const price = pricesCache[station.id];
+                const price = pricesCache[station.id];
         if (price) {
           if (price.is_discount) {
-            popup += `<div style="color:#d32f2f;font-weight:bold;">Скидка: ${price.discount_text || 'уточняйте'}</div>`;
+            const text = (price.discount_text || 'уточняйте');
+            const upper = text.toUpperCase();
+            const discColor = upper.includes('НАЦЕНКА') ? '#E8720C' : '#16A34A';
+            popup += `<div style="font-weight:bold;color:${discColor};">${text}</div>`;
           } else if (price.price_value) {
-            popup += `<div style="font-size:16px;font-weight:bold;color:#1565C0;">${price.price_value} ₽/л</div>`;
+            popup += `<div style="font-size:16px;font-weight:bold;color:#E8720C;">${price.price_value} ₽/л</div>`;
           }
         } else {
           popup += `<div style="color:#888;">Цена не указана (ДТ-Л)</div>`;
