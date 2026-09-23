@@ -1452,30 +1452,21 @@
       }
 
       // Отмеченные сети.
+            // Отмеченные сети.
       const selectedNetworkIds = getSelectedNetworkIds();
 
-      // Если маршрут построен — берём станции вдоль него, отфильтрованные
-      // по выбранным сетям (если сети отмечены).
-      let visibleStationIds = [];
-      let visibleNetworks = [];
+      // Собираем список сетей для отправки.
+      // Если сети отмечены — берём их. Если нет, но есть маршрут — берём сети
+      // тех станций, что попали на маршрут. Иначе — все сети (пустой массив).
+      let visibleNetworks = selectedNetworkIds.slice();
 
-      if (routeGeojson && stationsOnRoute.length > 0) {
-        // Маршрут есть: передаём конкретные станции.
-        let stationsToSend = stationsOnRoute;
-        if (selectedNetworkIds.length > 0) {
-          stationsToSend = stationsOnRoute.filter(s =>
-            selectedNetworkIds.includes(s.network_id)
-          );
-        }
-        visibleStationIds = stationsToSend.map(s => s.id);
-
-        if (visibleStationIds.length === 0) {
-          setStatus('На маршруте нет станций выбранных сетей. Снимите фильтр или измените маршрут.', 'error');
-          return;
-        }
-      } else {
-        // Маршрута нет: передаём сети. Если сети не отмечены — все станции.
-        visibleNetworks = selectedNetworkIds;
+      if (visibleNetworks.length === 0 && routeGeojson && stationsOnRoute.length > 0) {
+        // Автоматически берём сети станций вдоль маршрута.
+        const netsFromRoute = new Set();
+        stationsOnRoute.forEach(s => {
+          if (s.network_id) netsFromRoute.add(s.network_id);
+        });
+        visibleNetworks = Array.from(netsFromRoute);
       }
 
       setStatus('Создание карты...', '');
@@ -1484,13 +1475,12 @@
 
       try {
         // ---------- 2. Формируем payload ----------
-        const payload = {
+               const payload = {
           client_name: clientName,
           price_list_id: priceListId,
           area: area,
           show_greeting: showGreeting,
           visible_networks: visibleNetworks,
-          visible_station_ids: visibleStationIds,
           route_geojson: routeGeojson,
           radius_km: radiusKm,
           map_title: mapTitle || null,
