@@ -786,6 +786,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -1288,35 +1289,188 @@
       }
       document.body.removeChild(ta);
     }
-       window.downloadExcel = function() {
+           // ============================================================
+    // Пункт 4. Экспорт Excel через ExcelJS: стили, цвета, единый файл
+    // ============================================================
+    window.downloadExcel = async function() {
       if (!window._networkData) return;
-      const data = window._networkData;
-      const wb = XLSX.utils.book_new();
 
-      // ---------- Считаем километраж каждой станции вдоль маршрута ----------
-      // Если маршрута нет — km остаётся null, колонка «Км» не выводится.
-      const hasRoute = !!clientRouteGeojson;
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Карта АЗС';
+      wb.created = new Date();
 
-      let stationsWithKm = filteredStations.map(station => {
-        const price = getPriceForFuel(station, currentFuel);
-        let km = null;
+      const ws = wb.addWorksheet('Маршрут', {
+        pageSetup: { fitToPage: true, orientation: 'landscape' }
+      });
 
-        if (hasRoute && station.lat && station.lon) {
-          try {
-            const line = turf.lineString(clientRouteGeojson.coordinates);
-            const pt = turf.point([station.lon, station.lat]);
-            // nearestPointOnLine возвращает properties.location — долю
-            // от 0 до 1, показывающую положение проекции точки на линии.
-            const snapped = turf.nearestPointOnLine(line, pt, { units: 'kilometers' });
-            const totalLen = turf.length(line, { units: 'kilometers' });
-            km = totalLen * (snapped.properties.location || 0);
-          } catch (e) {
-            km = null;
+      ws.columns = [
+        { width: 32 },   // Название
+        { width: 45 },   // Адрес
+        { width: 22 },   // Сеть
+        { width: 14 }    // Цена
+      ];
+
+      // ---------- 1. Заголовок ----------
+      ws.mergeCells('A1:D1');
+      const titleCell = ws.getCell('A1');
+      titleCell.value = 'Коммерческое предложение';
+      titleCell.font = { name: 'Arial', size: 18, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8720C' } };
+      ws.getRow(1).height = 36;
+
+      // ---------- 2. Сводка ----------
+      const today = new Date().toLocaleDateString('ru-RU');
+
+      // Считаем станции и цены.
+      let bestPrice = null;
+      let sumPrice = 0;
+      let countNumeric = 0;
+      let totalStations = filteredStations.length;
+
+      filteredStations.forEach(station => {
+        const p = getPriceForFuel(station, currentFuel);
+        if (p && !p.is_discount && p.price_value > 0) {
+          if (bestPrice === null || p.price_value < bestPrice) bestPrice = p.price_value;
+          sumPrice += p.price_value;
+          countNumeric++;
+        }
+      });
+      const avgPrice = countNumeric > 0 ? (sumPrice / countNumeric) : null;
+
+      const rowsInfo = [
+        ['Маршрут:', window._networkData.routeName || '—'],
+        ['Дата:', today],
+        ['Топливо:', currentFuel],
+        ['Лучшая цена:', bestPrice !== null ? bestPrice.toFixed(2) + ' ₽/л' : '—'],
+        ['Средняя цена:', avgPrice !== null ? avgPrice.toFixed(2) + ' ₽/л' : '—'],
+        ['Всего АЗС:', totalStations]
+      ];
+
+      let rowIdx = 2;
+      rowsInfo.forEach(([label, value]) => {
+        const labelCell = ws.getCell(`A${rowIdx}`);
+        labelCell.value = label;
+        labelCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF78716C' } };
+
+        const valueCell = ws.getCell(`B${rowIdx}`);
+        valueCell.value = value;
+        valueCell.font = { name: 'Arial', size: 12, color: { argb: 'FF1F1B16' } };
+
+        // Особое выделение для лучшей цены.
+        if (label === 'Лучшая цена:' && bestPrice !== null) {
+          valueCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF16A34A' } };
+        }
+        rowIdx++;
+      });
+
+      // Пустая строка.
+      rowIdx++;
+
+      // ---------- 3. Шапка таблицы ----------
+      const headerRowIdx = rowIdx;
+      const headers = ['Название', 'Адрес', 'Сеть', 'Цена'];
+      headers.forEach((h, i) => {
+        const cell = ws.getCell(headerRowIdx, i + 1);
+        cell.value = h;
+        cell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F1B16' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF1F1B16' } },
+          bottom: { style: 'thin', color: { argb: 'FF1F1B16' } },
+          left: { style: 'thin', color: { argb: 'FF1F1B16' } },
+          right: { style: 'thin', color: { argb: 'FF1F1B16' } }
+        };
+      });
+      ws.getRow(headerRowIdx).height = 26;
+
+      // ---------- 4. Строки станций, отсортированные по цене ----------
+      const sorted = filteredStations.slice().sort((a, b) => {
+        const pa = getPriceForFuel(a, currentFuel);
+        const pb = getPriceForFuel(b, currentFuel);
+        const va = pa && !pa.is_discount ? pa.price_value : 999999;
+        const vb = pb && !pb.is_discount ? pb.price_value : 999999;
+        return va - vb;
+      });
+
+      let dataRow = headerRowIdx + 1;
+      sorted.forEach(station => {
+        const p = getPriceForFuel(station, currentFuel);
+        const name = station.name || '';
+        const address = station.address || '';
+        const network = station.network_name || '';
+        let priceText = '—';
+        let priceColor = null;
+        let rowFill = null;
+
+        if (p) {
+          if (p.is_discount) {
+            // Текстовая цена: СКИДКА или НАЦЕНКА.
+            priceText = p.discount_text || 'условие';
+            const upper = priceText.toUpperCase();
+            priceColor = upper.includes('НАЦЕНКА') ? 'FFE8720C' : 'FF16A34A';
+          } else if (p.price_value) {
+            priceText = p.price_value.toFixed(2) + ' ₽/л';
+            // Лучшую цену выделяем фоном.
+            if (bestPrice !== null && Math.abs(p.price_value - bestPrice) < 0.001) {
+              rowFill = 'FFE8F5E9';
+              priceColor = 'FF16A34A';
+            }
           }
         }
 
-        return { station, price, km };
+        const row = ws.getRow(dataRow);
+        row.height = 22;
+
+        const cells = [
+          { value: name, align: 'left' },
+          { value: address, align: 'left' },
+          { value: network, align: 'left' },
+          { value: priceText, align: 'right', color: priceColor, bold: !!priceColor }
+        ];
+
+        cells.forEach((c, i) => {
+          const cell = ws.getCell(dataRow, i + 1);
+          cell.value = c.value;
+          cell.alignment = { horizontal: c.align, vertical: 'middle', wrapText: false };
+          cell.font = {
+            name: 'Arial',
+            size: 11,
+            color: c.color ? { argb: c.color } : { argb: 'FF1F1B16' },
+            bold: !!c.bold
+          };
+          if (rowFill) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowFill } };
+          }
+          cell.border = {
+            bottom: { style: 'thin', color: { argb: 'FFE8E1D8' } }
+          };
+        });
+
+        dataRow++;
       });
+
+      // ---------- 5. Закрепление шапки ----------
+      ws.views = [{ state: 'frozen', ySplit: headerRowIdx }];
+
+      // ---------- 6. Сохранение ----------
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+
+      const safeName = (window._networkData.routeName || 'АЗС_маршрут')
+        .replace(/[^\wа-яА-ЯёЁ\-]+/g, '_').slice(0, 40);
+      a.download = `${safeName}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
 
       // Сортируем по километражу, если маршрут есть.
       if (hasRoute) {
