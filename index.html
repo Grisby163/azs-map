@@ -1303,15 +1303,16 @@
         pageSetup: { fitToPage: true, orientation: 'landscape' }
       });
 
-      ws.columns = [
-        { width: 32 },   // Название
-        { width: 45 },   // Адрес
-        { width: 22 },   // Сеть
-        { width: 14 }    // Цена
+            ws.columns = [
+        { width: 30 },   // Название
+        { width: 42 },   // Адрес
+        { width: 20 },   // Сеть
+        { width: 22 },   // Регион
+        { width: 16 }    // Цена
       ];
 
       // ---------- 1. Заголовок ----------
-      ws.mergeCells('A1:D1');
+            ws.mergeCells('A1:E1');
       const titleCell = ws.getCell('A1');
       titleCell.value = 'Коммерческое предложение';
       titleCell.font = { name: 'Arial', size: 18, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1369,7 +1370,7 @@
 
       // ---------- 3. Шапка таблицы ----------
       const headerRowIdx = rowIdx;
-      const headers = ['Название', 'Адрес', 'Сеть', 'Цена'];
+            const headers = ['Название', 'Адрес', 'Сеть', 'Регион', 'Цена'];
       headers.forEach((h, i) => {
         const cell = ws.getCell(headerRowIdx, i + 1);
         cell.value = h;
@@ -1394,15 +1395,17 @@
         return va - vb;
       });
 
-      let dataRow = headerRowIdx + 1;
+            let dataRow = headerRowIdx + 1;
       sorted.forEach(station => {
         const p = getPriceForFuel(station, currentFuel);
         const name = station.name || '';
         const address = station.address || '';
         const network = station.network_name || '';
+        const region = station.region || '';
         let priceText = '—';
         let priceColor = null;
         let rowFill = null;
+        let isBestRow = false;
 
         if (p) {
           if (p.is_discount) {
@@ -1412,21 +1415,23 @@
             priceColor = upper.includes('НАЦЕНКА') ? 'FFE8720C' : 'FF16A34A';
           } else if (p.price_value) {
             priceText = p.price_value.toFixed(2) + ' ₽/л';
-            // Лучшую цену выделяем фоном.
+            // Лучшую цену выделяем фоном и границами.
             if (bestPrice !== null && Math.abs(p.price_value - bestPrice) < 0.001) {
               rowFill = 'FFE8F5E9';
               priceColor = 'FF16A34A';
+              isBestRow = true;
             }
           }
         }
 
         const row = ws.getRow(dataRow);
-        row.height = 22;
+        row.height = 24;
 
         const cells = [
           { value: name, align: 'left' },
           { value: address, align: 'left' },
           { value: network, align: 'left' },
+          { value: region, align: 'left' },
           { value: priceText, align: 'right', color: priceColor, bold: !!priceColor }
         ];
 
@@ -1443,9 +1448,21 @@
           if (rowFill) {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowFill } };
           }
-          cell.border = {
-            bottom: { style: 'thin', color: { argb: 'FFE8E1D8' } }
-          };
+
+          if (isBestRow) {
+            // Лучшая АЗС — толстые зелёные границы со всех сторон.
+            const greenBorder = { style: 'medium', color: { argb: 'FF16A34A' } };
+            cell.border = {
+              top: greenBorder,
+              bottom: greenBorder,
+              left: greenBorder,
+              right: greenBorder
+            };
+          } else {
+            cell.border = {
+              bottom: { style: 'thin', color: { argb: 'FFE8E1D8' } }
+            };
+          }
         });
 
         dataRow++;
