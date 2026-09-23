@@ -429,6 +429,52 @@
       .form-group select {
         font-size: 16px; /* чтобы iOS не зумил */
       }
+          /* ---------- Список маршрутов в конструкторе ---------- */
+    .route-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 10px;
+      background: rgba(254, 243, 226, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 4px;
+      font-size: 13px;
+      gap: 8px;
+    }
+    .route-list-item .route-name {
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .route-list-item .route-len {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .route-list-item .route-remove {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      margin: 0;
+      box-shadow: none;
+      transition: background .15s, color .15s, border-color .15s;
+      flex-shrink: 0;
+    }
+    .route-list-item .route-remove:hover {
+      background: #FEE2E2;
+      color: #DC2626;
+      border-color: #DC2626;
+    }
     }
   </style>
   </style>
@@ -491,6 +537,19 @@
           <button onclick="clearRoutePoints()" class="secondary">Сбросить точки</button>
         </div>
         <div id="pointModeInfo" style="font-size:12px; color:#666; margin-top:6px;"></div>
+                <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #ccc;">
+          <label style="font-size:12px; font-weight:bold;">Добавленные маршруты</label>
+          <div id="routesList" style="margin-top:6px;"></div>
+          <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+            <button onclick="addCurrentRoute()" id="addRouteBtn" class="secondary" disabled style="font-size:12px; padding:6px 10px;">
+              ➕ Добавить маршрут в список
+            </button>
+            <button onclick="clearRoutesList()" class="secondary" style="font-size:12px; padding:6px 10px; background:#d32f2f; color:#fff;">
+              Очистить список
+            </button>
+          </div>
+          <div id="routesListInfo" style="font-size:11px; color:#666; margin-top:6px;"></div>
+        </div>
         <div id="routeInfo" style="font-size:12px; color:#555; margin-top:8px;"></div>
                 <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #ccc;">
           <label style="font-size:12px; font-weight:bold;">Шаблоны маршрутов</label>
@@ -592,6 +651,9 @@
     let routeLineLayer = null;
     let routePoints = [];
     let routeGeojson = null;
+        // Список добавленных маршрутов. Каждый элемент:
+    // { id, name, geojson, radius_km, lengthKm }
+    let routesList = [];
     let stationsOnRoute = [];
 
       async function initBuilder() {
@@ -895,7 +957,90 @@
         setStatus(`Точек: ${n}. Промежуточные будут учтены при построении.`, '');
       }
     }
+    // ============================================================
+    // Пункт 2.2. Список маршрутов
+    // ============================================================
 
+    // Добавляет текущий построенный маршрут в список.
+    function addCurrentRoute() {
+      if (!routeGeojson || !routeGeojson.coordinates) {
+        setStatus('Сначала постройте маршрут.', 'error');
+        return;
+      }
+      // Спрашиваем название.
+      const name = prompt('Название маршрута (например, «Москва – Тверь»):',
+        document.getElementById('mapTitle').value.trim() || '');
+      if (name === null) return; // отменили
+      const trimmed = name.trim();
+      if (!trimmed) {
+        setStatus('Название не может быть пустым.', 'error');
+        return;
+      }
+
+      // Считаем длину.
+      let lengthKm = null;
+      try {
+        const line = turf.lineString(routeGeojson.coordinates);
+        lengthKm = turf.length(line, { units: 'kilometers' });
+      } catch (e) {
+        lengthKm = null;
+      }
+
+      routesList.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        name: trimmed,
+        geojson: routeGeojson,
+        radius_km: parseFloat(document.getElementById('radiusKm').value) || 5,
+        lengthKm
+      });
+
+      renderRoutesList();
+      setStatus(`Маршрут «${trimmed}» добавлен в список. Очистите текущий, чтобы нарисовать следующий.`, 'success');
+    }
+
+    // Отрисовка списка добавленных маршрутов.
+    function renderRoutesList() {
+      const container = document.getElementById('routesList');
+      const info = document.getElementById('routesListInfo');
+      if (!container) return;
+
+      if (routesList.length === 0) {
+        container.innerHTML = '';
+        info.textContent = 'Пока ни одного маршрута не добавлено. Нарисуйте маршрут и нажмите «Добавить маршрут в список».';
+      } else {
+        let html = '';
+        routesList.forEach(r => {
+          const len = r.lengthKm !== null ? `${r.lengthKm.toFixed(1)} км` : '';
+          html += `<div class="route-list-item">
+            <span class="route-name">${r.name}</span>
+            <span class="route-len">${len}</span>
+            <button class="route-remove" onclick="removeRouteFromList('${r.id}')" title="Удалить">×</button>
+          </div>`;
+        });
+        container.innerHTML = html;
+        info.textContent = `Всего маршрутов: ${routesList.length}`;
+      }
+
+      // Кнопка «Добавить» активна, если текущий маршрут построен.
+      const btn = document.getElementById('addRouteBtn');
+      if (btn) btn.disabled = !routeGeojson;
+    }
+
+    // Удаляет маршрут из списка.
+    function removeRouteFromList(id) {
+      routesList = routesList.filter(r => r.id !== id);
+      renderRoutesList();
+      setStatus('Маршрут удалён из списка.', '');
+    }
+
+    // Очищает список маршрутов.
+    function clearRoutesList() {
+      if (routesList.length === 0) return;
+      if (!confirm(`Удалить все маршруты из списка (${routesList.length} шт.)?`)) return;
+      routesList = [];
+      renderRoutesList();
+      setStatus('Список маршрутов очищен.', '');
+    }
     // ---------- Сброс точек маршрута ----------
     function clearRoutePoints() {
       routePoints.forEach(p => { if (p.marker) map.removeLayer(p.marker); });
@@ -947,6 +1092,7 @@
 
         routeGeojson = result.route_geojson;
         updateTemplateButtons();
+        renderRoutesList();
                // После построения маршрута выключаем режим расстановки,
         // чтобы случайные клики не добавляли точки.
         if (pointMode) togglePointMode();
@@ -1395,6 +1541,7 @@
         }
         setStatus(`Шаблон «${trimmed}» сохранён.`, 'success');
         await loadRouteTemplates();
+                renderRoutesList();
       } catch (e) {
         setStatus('Ошибка сохранения: ' + e.message, 'error');
       }
@@ -1457,22 +1604,44 @@
       // чтобы сервер отдал все видимые сети. Тогда на вкладке «Вся сеть»
       // клиент увидит все станции.
       const visibleNetworks = getSelectedNetworkIds().slice();
+            // Пункт 2: собираем все маршруты.
+      // Если в списке есть маршруты — отправляем их в routes.
+      // Если список пуст, но есть текущий построенный — добавляем его как единственный.
+      let routesToSend = routesList.map(r => ({
+        id: r.id,
+        name: r.name,
+        geojson: r.geojson,
+        radius_km: r.radius_km
+      }));
+
+      if (routesToSend.length === 0 && routeGeojson) {
+        const currentName = (document.getElementById('mapTitle').value.trim() || 'Маршрут');
+        routesToSend = [{
+          name: currentName,
+          geojson: routeGeojson,
+          radius_km: parseFloat(document.getElementById('radiusKm').value) || 5
+        }];
+      }
       setStatus('Создание карты...', '');
       document.getElementById('createCardBtn').disabled = true;
       document.getElementById('result').style.display = 'none';
 
       try {
         // ---------- 2. Формируем payload ----------
-               const payload = {
+                      const payload = {
           client_name: clientName,
           price_list_id: priceListId,
           area: area,
           show_greeting: showGreeting,
           visible_networks: visibleNetworks,
-          route_geojson: routeGeojson,
+          // Старое поле оставляем для обратной совместимости:
+          // если есть один маршрут из списка — он же уйдёт в route_geojson.
+          route_geojson: routesToSend.length === 1 ? routesToSend[0].geojson : routeGeojson,
           radius_km: radiusKm,
           map_title: mapTitle || null,
-          map_settings: {}
+          map_settings: {},
+          // Новое: массив всех маршрутов.
+          routes: routesToSend
         };
 
         // ---------- 3. Отправляем в quick-function ----------
