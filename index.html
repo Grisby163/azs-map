@@ -1133,9 +1133,17 @@
         networkNames.forEach(netName => {
           const net = byNetwork[netName];
           const isCheapest = netName === cheapestNet;
-          const priceLabel = net.minPrice !== null
-            ? net.minPrice.toFixed(2) + ' ₽/л'
-            : (net.minPriceText ? net.minPriceText : '—');
+                   let priceLabel;
+          let priceColor = '';
+          if (net.minPrice !== null) {
+            priceLabel = net.minPrice.toFixed(2) + ' ₽/л';
+          } else if (net.minPriceText) {
+            priceLabel = net.minPriceText;
+            const upper = net.minPriceText.toUpperCase();
+            priceColor = upper.includes('НАЦЕНКА') ? '#E8720C' : '#16A34A';
+          } else {
+            priceLabel = '—';
+          }
 
           html += `<div class="network-item network-item-clickable ${isCheapest ? 'cheapest' : ''}" data-network="${encodeURIComponent(netName)}" onclick="toggleNetwork('${encodeURIComponent(netName)}')">
             <div>
@@ -1144,7 +1152,7 @@
               ${net.region ? `<span class="network-region">${net.region}</span>` : ''}
               <span class="network-arrow">▶</span>
             </div>
-            <div class="network-price">${priceLabel}</div>
+                        <div class="network-price"${priceColor ? ` style="color:${priceColor};"` : ''}>${priceLabel}</div>
           </div>
           <div class="network-stations" id="netstations-${encodeURIComponent(netName)}"></div>`;
         });
