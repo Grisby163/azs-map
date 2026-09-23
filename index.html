@@ -1472,77 +1472,7 @@
       URL.revokeObjectURL(url);
     };
 
-      // Сортируем по километражу, если маршрут есть.
-      if (hasRoute) {
-        stationsWithKm.sort((a, b) => {
-          if (a.km === null && b.km === null) return 0;
-          if (a.km === null) return 1;
-          if (b.km === null) return -1;
-          return a.km - b.km;
-        });
-      }
-
-      // ---------- Формируем шапку и сводку ----------
-      const rows = [
-        ['Коммерческое предложение'],
-        ['Маршрут: ' + data.routeName],
-        ['Дата: ' + new Date().toLocaleDateString()],
-        [],
-        ['Минимальная цена', Math.min(...Object.values(data.details).map(d => d.price)).toFixed(2) + ' ₽/л'],
-        ['Средняя цена', (Object.values(data.details).reduce((sum, d) => sum + d.price, 0) / data.nets.length).toFixed(2) + ' ₽/л'],
-        ['Количество сетей', data.nets.length],
-        [],
-        ['Сеть', 'Мин. цена на маршруте']
-      ];
-
-      data.nets.forEach(net => {
-        const nd = data.details[net];
-        rows.push([net, nd.price.toFixed(2) + ' ₽/л']);
-      });
-
-      rows.push([]);
-
-      // ---------- Шапка таблицы станций ----------
-      const header = hasRoute
-        ? ['Км', 'Название', 'Адрес', 'Сеть', 'Цена', 'Скидка']
-        : ['Название', 'Адрес', 'Сеть', 'Цена', 'Скидка'];
-      rows.push(header);
-
-      // ---------- Строки станций ----------
-      stationsWithKm.forEach(({ station, price, km }) => {
-        const name = station.name || '';
-        const address = station.address || '';
-        const network = station.network_name || '';
-        let priceStr = '';
-        let discountStr = '';
-
-        if (price) {
-          if (price.is_discount) {
-            discountStr = price.discount_text || 'скидка';
-          } else if (price.price_value) {
-            priceStr = price.price_value;
-          }
-        }
-
-        if (hasRoute) {
-          rows.push([
-            km !== null ? km.toFixed(1) : '',
-            name, address, network, priceStr, discountStr
-          ]);
-        } else {
-          rows.push([name, address, network, priceStr, discountStr]);
-        }
-      });
-
-      // ---------- Записываем файл ----------
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = hasRoute
-        ? [{ wch: 8 }, { wch: 25 }, { wch: 30 }, { wch: 20 }, { wch: 10 }, { wch: 15 }]
-        : [{ wch: 25 }, { wch: 30 }, { wch: 20 }, { wch: 10 }, { wch: 15 }];
-
-      XLSX.utils.book_append_sheet(wb, ws, 'Маршрут');
-      XLSX.writeFile(wb, 'АЗС_маршрут.xlsx');
-    };
+     
 
     function showGreeting(area, showGreetingFlag) {
       if (!showGreetingFlag) return;
