@@ -101,7 +101,48 @@
     @media (max-width: 720px) {
       .view-tab { padding: 6px 12px; font-size: 12px; }
     }
-    /* Кнопки топлива */
+        /* ---------- Переключатель маршрутов ---------- */
+    .routes-switcher {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      background: rgba(232, 225, 216, 0.5);
+      border-radius: 999px;
+      flex-basis: 100%;
+      justify-content: flex-start;
+      margin-bottom: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .routes-switcher::-webkit-scrollbar { display: none; }
+    .route-switch-btn {
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .18s, color .18s, box-shadow .18s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .route-switch-btn:hover {
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--text);
+    }
+    .route-switch-btn.active {
+      background: var(--gradient-accent);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
+    }
+    @media (max-width: 720px) {
+      .route-switch-btn { padding: 6px 10px; font-size: 12px; }
+    }
+      /* Кнопки топлива */
     .fuel-btn, .route-btn {
       padding: 8px 16px;
       border: 1px solid transparent;
@@ -821,7 +862,11 @@
     let clientRouteGeojson = null;   // геометрия маршрута от менеджера
     let clientMapTitle = null;       // заголовок карты
     let clientRadiusKm = 5;          // радиус, с которым строился маршрут
-    let clientRouteLine = null;      // слой Leaflet с линией маршрута
+    let clientRouteLine = null; 
+        // Пункт 2.3. Массив маршрутов и активный маршрут.
+    let clientRoutes = [];           // [{ id, name, geojson, radius_km }]
+    let activeRouteIndex = 0;        // индекс активного маршрута
+    let clientRouteLines = [];       // массив слоёв Leaflet (по одному на маршрут)// слой Leaflet с линией маршрута
 
     const highwayRoutes = {
       m10: { name: "Москва – Санкт‑Петербург (М10)", coords: [[37.5634,55.7756],[35.9176,56.8587],[34.9604,57.0411],[33.2486,57.9797],[31.2749,58.5228],[30.5043,59.8066]], radius: 5 },
@@ -1292,27 +1337,69 @@
            // ============================================================
     // Пункт 4. Экспорт Excel через ExcelJS: стили, цвета, единый файл
     // ============================================================
-    window.downloadExcel = async function() {
+        window.downloadExcel = async function() {
       if (!window._networkData) return;
 
       const wb = new ExcelJS.Workbook();
       wb.creator = 'Карта АЗС';
       wb.created = new Date();
 
-      const ws = wb.addWorksheet('Маршрут', {
+      // Если маршрутов нет — делаем один лист по всем станциям.
+      // Если есть — отдельный лист на каждый маршрут.
+      if (clientRoutes.length === 0) {
+        await addRouteSheet(wb, 'Все АЗС', filteredStations);
+      } else {
+        for (let i = 0; i < clientRoutes.length; i++) {
+          const route = clientRoutes[i];
+          // Определяем станции для этого маршрута.
+          const routeStations = allStations.filter(station => {
+            if (!station.lat || !station.lon) return false;
+            if (getPriceForFuel(station, currentFuel) === null) return false;
+            try {
+              const line = turf.lineString(route.geojson.coordinates);
+              const dist = turf.pointToLineDistance(
+                turf.point([station.lon, station.lat]),
+                line,
+                { units: 'kilometers' }
+              );
+              return dist <= (route.radius_km || 5);
+            } catch (e) { return false; }
+          });
+          const safeSheetName = (route.name || `Маршрут ${i + 1}`)
+            .replace(/[\\\/\?\*\[\]:]/g, '').slice(0, 30);
+          await addRouteSheet(wb, safeSheetName, routeStations);
+        }
+      }
+
+      // Сохранение.
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = (clientMapTitle || 'АЗС_маршрут')
+        .replace(/[^\wа-яА-ЯёЁ\-]+/g, '_').slice(0, 40);
+      a.download = `${safeName}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    // Добавляет лист с данными по маршруту.
+    async function addRouteSheet(wb, sheetName, stations) {
+      const ws = wb.addWorksheet(sheetName, {
         pageSetup: { fitToPage: true, orientation: 'landscape' }
       });
 
-            ws.columns = [
-        { width: 30 },   // Название
-        { width: 42 },   // Адрес
-        { width: 20 },   // Сеть
-        { width: 22 },   // Регион
-        { width: 16 }    // Цена
+      ws.columns = [
+        { width: 30 }, { width: 42 }, { width: 20 }, { width: 22 }, { width: 16 }
       ];
 
-      // ---------- 1. Заголовок ----------
-            ws.mergeCells('A1:E1');
+      // Заголовок.
+      ws.mergeCells('A1:E1');
       const titleCell = ws.getCell('A1');
       titleCell.value = 'Коммерческое предложение';
       titleCell.font = { name: 'Arial', size: 18, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1320,16 +1407,12 @@
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8720C' } };
       ws.getRow(1).height = 36;
 
-      // ---------- 2. Сводка ----------
-      const today = new Date().toLocaleDateString('ru-RU');
-
-      // Считаем станции и цены.
+      // Сводка.
       let bestPrice = null;
       let sumPrice = 0;
       let countNumeric = 0;
-      let totalStations = filteredStations.length;
 
-      filteredStations.forEach(station => {
+      stations.forEach(station => {
         const p = getPriceForFuel(station, currentFuel);
         if (p && !p.is_discount && p.price_value > 0) {
           if (bestPrice === null || p.price_value < bestPrice) bestPrice = p.price_value;
@@ -1340,58 +1423,47 @@
       const avgPrice = countNumeric > 0 ? (sumPrice / countNumeric) : null;
 
       const rowsInfo = [
-        ['Маршрут:', window._networkData.routeName || '—'],
-        ['Дата:', today],
+        ['Маршрут:', sheetName],
+        ['Дата:', new Date().toLocaleDateString('ru-RU')],
         ['Топливо:', currentFuel],
         ['Лучшая цена:', bestPrice !== null ? bestPrice.toFixed(2) + ' ₽/л' : '—'],
         ['Средняя цена:', avgPrice !== null ? avgPrice.toFixed(2) + ' ₽/л' : '—'],
-        ['Всего АЗС:', totalStations]
+        ['Всего АЗС:', stations.length]
       ];
 
-            let rowIdx = 2;
+      let rowIdx = 2;
       rowsInfo.forEach(([label, value]) => {
-        const labelCell = ws.getCell(`A${rowIdx}`);
-        labelCell.value = label;
-        labelCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF78716C' } };
-        labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
+        const lc = ws.getCell(`A${rowIdx}`);
+        lc.value = label;
+        lc.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF78716C' } };
+        lc.alignment = { horizontal: 'left', vertical: 'middle' };
 
-        const valueCell = ws.getCell(`B${rowIdx}`);
-        valueCell.value = value;
-        valueCell.font = { name: 'Arial', size: 12, color: { argb: 'FF1F1B16' } };
-        // Явное выравнивание по левому краю — чтобы «Всего АЗС»
-        // и другие числовые значения не уезжали вправо.
-        valueCell.alignment = { horizontal: 'left', vertical: 'middle' };
+        const vc = ws.getCell(`B${rowIdx}`);
+        vc.value = value;
+        vc.font = { name: 'Arial', size: 12, color: { argb: 'FF1F1B16' } };
+        vc.alignment = { horizontal: 'left', vertical: 'middle' };
 
-        // Особое выделение для лучшей цены.
         if (label === 'Лучшая цена:' && bestPrice !== null) {
-          valueCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF16A34A' } };
+          vc.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF16A34A' } };
         }
         rowIdx++;
       });
-
-      // Пустая строка.
       rowIdx++;
 
-      // ---------- 3. Шапка таблицы ----------
+      // Шапка таблицы.
       const headerRowIdx = rowIdx;
-            const headers = ['Название', 'Адрес', 'Сеть', 'Регион', 'Цена'];
-            headers.forEach((h, i) => {
+      const headers = ['Название', 'Адрес', 'Сеть', 'Регион', 'Цена'];
+      headers.forEach((h, i) => {
         const cell = ws.getCell(headerRowIdx, i + 1);
         cell.value = h;
         cell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
         cell.alignment = { horizontal: 'left', vertical: 'middle' };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F1B16' } };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF1F1B16' } },
-          bottom: { style: 'thin', color: { argb: 'FF1F1B16' } },
-          left: { style: 'thin', color: { argb: 'FF1F1B16' } },
-          right: { style: 'thin', color: { argb: 'FF1F1B16' } }
-        };
       });
       ws.getRow(headerRowIdx).height = 26;
 
-      // ---------- 4. Строки станций, отсортированные по цене ----------
-      const sorted = filteredStations.slice().sort((a, b) => {
+      // Строки станций.
+      const sorted = stations.slice().sort((a, b) => {
         const pa = getPriceForFuel(a, currentFuel);
         const pb = getPriceForFuel(b, currentFuel);
         const va = pa && !pa.is_discount ? pa.price_value : 999999;
@@ -1399,7 +1471,7 @@
         return va - vb;
       });
 
-            let dataRow = headerRowIdx + 1;
+      let dataRow = headerRowIdx + 1;
       sorted.forEach(station => {
         const p = getPriceForFuel(station, currentFuel);
         const name = station.name || '';
@@ -1413,13 +1485,11 @@
 
         if (p) {
           if (p.is_discount) {
-            // Текстовая цена: СКИДКА или НАЦЕНКА.
             priceText = p.discount_text || 'условие';
             const upper = priceText.toUpperCase();
             priceColor = upper.includes('НАЦЕНКА') ? 'FFE8720C' : 'FF16A34A';
           } else if (p.price_value) {
             priceText = p.price_value.toFixed(2) + ' ₽/л';
-            // Лучшую цену выделяем фоном и границами.
             if (bestPrice !== null && Math.abs(p.price_value - bestPrice) < 0.001) {
               rowFill = 'FFE8F5E9';
               priceColor = 'FF16A34A';
@@ -1428,15 +1498,13 @@
           }
         }
 
-        const row = ws.getRow(dataRow);
-        row.height = 24;
-
+        ws.getRow(dataRow).height = 24;
         const cells = [
           { value: name, align: 'left' },
           { value: address, align: 'left' },
           { value: network, align: 'left' },
           { value: region, align: 'left' },
-                    { value: priceText, align: 'left', color: priceColor, bold: !!priceColor }
+          { value: priceText, align: 'left', color: priceColor, bold: !!priceColor }
         ];
 
         cells.forEach((c, i) => {
@@ -1444,54 +1512,24 @@
           cell.value = c.value;
           cell.alignment = { horizontal: c.align, vertical: 'middle', wrapText: false };
           cell.font = {
-            name: 'Arial',
-            size: 11,
+            name: 'Arial', size: 11,
             color: c.color ? { argb: c.color } : { argb: 'FF1F1B16' },
             bold: !!c.bold
           };
-          if (rowFill) {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowFill } };
-          }
-
+          if (rowFill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowFill } };
           if (isBestRow) {
-            // Лучшая АЗС — толстые зелёные границы со всех сторон.
-            const greenBorder = { style: 'medium', color: { argb: 'FF16A34A' } };
-            cell.border = {
-              top: greenBorder,
-              bottom: greenBorder,
-              left: greenBorder,
-              right: greenBorder
-            };
+            const b = { style: 'medium', color: { argb: 'FF16A34A' } };
+            cell.border = { top: b, bottom: b, left: b, right: b };
           } else {
-            cell.border = {
-              bottom: { style: 'thin', color: { argb: 'FFE8E1D8' } }
-            };
+            cell.border = { bottom: { style: 'thin', color: { argb: 'FFE8E1D8' } } };
           }
         });
-
         dataRow++;
       });
 
-      // ---------- 5. Закрепление шапки ----------
       ws.views = [{ state: 'frozen', ySplit: headerRowIdx }];
-
-      // ---------- 6. Сохранение ----------
-      const buffer = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-
-      const safeName = (window._networkData.routeName || 'АЗС_маршрут')
-        .replace(/[^\wа-яА-ЯёЁ\-]+/g, '_').slice(0, 40);
-      a.download = `${safeName}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    };
+    }
+    
 
      
 
@@ -1547,20 +1585,41 @@
           const showGreetingFlag = meta.show_greeting !== false;
 
           // Новое: читаем маршрут, заголовок и радиус из meta.
-                    clientRouteGeojson = meta.route_geojson || null;
-          clientMapTitle = meta.map_title || null;
+                             clientMapTitle = meta.map_title || null;
           clientRadiusKm = meta.radius_km || 5;
 
-          // Если есть маршрут — определяем, какие станции вдоль него.
-          if (clientRouteGeojson) {
-            computeStationsOnRoute();
+          // Читаем массив маршрутов. Если его нет — берём старое поле
+          // route_geojson и превращаем в массив из одного маршрута.
+          if (Array.isArray(meta.routes) && meta.routes.length > 0) {
+            clientRoutes = meta.routes.map(r => ({
+              id: r.id || String(Math.random()),
+              name: r.name || 'Маршрут',
+              geojson: r.geojson,
+              radius_km: r.radius_km || 5
+            }));
+          } else if (meta.route_geojson && meta.route_geojson.coordinates) {
+            clientRoutes = [{
+              id: 'legacy',
+              name: meta.map_title || 'Маршрут',
+              geojson: meta.route_geojson,
+              radius_km: meta.radius_km || 5
+            }];
+          } else {
+            clientRoutes = [];
           }
 
+          // Для обратной совместимости оставляем clientRouteGeojson равным
+          // активному маршруту.
+          clientRouteGeojson = clientRoutes.length > 0 ? clientRoutes[0].geojson : null;
+          activeRouteIndex = 0;
+
           buildFuelButtons();
-          buildViewTabs();       // кнопки «Вся сеть / Мой маршрут» (если есть маршрут)
-          drawClientRoute();     // рисуем линию маршрута (если есть)
-          showMapTitle();        // показываем заголовок (если есть)
-          applyFilters();        // рисуем станции
+          buildViewTabs();
+          buildRoutesSwitcher();  // переключатель между маршрутами (если их несколько)
+          drawClientRoutes();     // рисуем все линии маршрутов
+          computeStationsOnRoute(); // считаем станции вдоль активного маршрута
+          showMapTitle();
+          applyFilters();
           showGreeting(area, showGreetingFlag);
         } else {
           allStations = data;
@@ -1637,41 +1696,135 @@
       });
 
       // Показываем / скрываем маршрут.
+            // Показываем / скрываем маршруты.
       if (view === 'route') {
-        if (clientRouteLine && !map.hasLayer(clientRouteLine)) {
-          clientRouteLine.addTo(map);
-        }
+        clientRouteLines.forEach(line => {
+          if (!map.hasLayer(line)) line.addTo(map);
+        });
       } else {
-        if (clientRouteLine && map.hasLayer(clientRouteLine)) {
-          map.removeLayer(clientRouteLine);
-        }
+        clientRouteLines.forEach(line => {
+          if (map.hasLayer(line)) map.removeLayer(line);
+        });
       }
 
       // Перерисовываем станции.
       applyFilters();
     }
     // Рисует линию маршрута, если он задан в meta.route_geojson.
-    function drawClientRoute() {
-      if (!clientRouteGeojson || !clientRouteGeojson.coordinates) return;
+        // ============================================================
+    // Пункт 2.3. Отрисовка всех маршрутов
+    // ============================================================
 
-      if (clientRouteLine) {
-        map.removeLayer(clientRouteLine);
+    // Цвета для маршрутов.
+    const ROUTE_COLORS = ['#1565C0', '#E8720C', '#16A34A', '#8E24AA', '#0288D1', '#D81B60'];
+
+    // Рисует все маршруты. Активный — ярко и толсто, остальные — приглушённо.
+    function drawClientRoutes() {
+      // Убираем старые линии.
+      clientRouteLines.forEach(l => { try { map.removeLayer(l); } catch (e) {} });
+      clientRouteLines = [];
+
+      if (!clientRoutes || clientRoutes.length === 0) return;
+
+      const allLatLngs = [];
+
+      clientRoutes.forEach((route, idx) => {
+        if (!route.geojson || !route.geojson.coordinates) return;
+        const latlngs = route.geojson.coordinates.map(c => [c[1], c[0]]);
+        const isActive = idx === activeRouteIndex;
+        const color = ROUTE_COLORS[idx % ROUTE_COLORS.length];
+
+        const line = L.polyline(latlngs, {
+          color: isActive ? color : '#9E9E9E',
+          weight: isActive ? 5 : 3,
+          opacity: isActive ? 0.9 : 0.4,
+          dashArray: isActive ? null : '6,6'
+        }).addTo(map);
+
+        // При клике на линию — переключаемся на этот маршрут.
+        line.on('click', () => setActiveRoute(idx));
+
+        clientRouteLines.push(line);
+        allLatLngs.push(...latlngs);
+      });
+
+      // Подстраиваем карту под активный маршрут.
+      if (clientRouteLines[activeRouteIndex]) {
+        map.fitBounds(clientRouteLines[activeRouteIndex].getBounds(), { padding: [50, 50] });
       }
-
-      // route_geojson.coordinates — массив [lon, lat].
-      // Leaflet ждёт [lat, lon].
-      const latlngs = clientRouteGeojson.coordinates.map(c => [c[1], c[0]]);
-
-      clientRouteLine = L.polyline(latlngs, {
-        color: '#1565C0',
-        weight: 5,
-        opacity: 0.85
-      }).addTo(map);
-
-      // Подстраиваем карту под маршрут.
-      map.fitBounds(clientRouteLine.getBounds(), { padding: [50, 50] });
     }
 
+    // Переключает активный маршрут.
+    function setActiveRoute(idx) {
+      if (idx < 0 || idx >= clientRoutes.length) return;
+      activeRouteIndex = idx;
+
+      // Обновляем clientRouteGeojson для остальных функций.
+      clientRouteGeojson = clientRoutes[idx].geojson;
+      clientRadiusKm = clientRoutes[idx].radius_km || 5;
+
+      // Перерисовываем линии.
+      clientRoutes.forEach((route, i) => {
+        const line = clientRouteLines[i];
+        if (!line) return;
+        const isActive = i === activeRouteIndex;
+        const color = ROUTE_COLORS[i % ROUTE_COLORS.length];
+        line.setStyle({
+          color: isActive ? color : '#9E9E9E',
+          weight: isActive ? 5 : 3,
+          opacity: isActive ? 0.9 : 0.4,
+          dashArray: isActive ? null : '6,6'
+        });
+      });
+
+      // Пересчитываем станции вдоль активного маршрута.
+      computeStationsOnRoute();
+
+      // Обновляем заголовок.
+      const routeName = clientRoutes[idx].name || 'Маршрут';
+      updateMapTitleText(routeName);
+
+      // Обновляем активную кнопку в переключателе.
+      document.querySelectorAll('.route-switch-btn').forEach((b, i) => {
+        b.classList.toggle('active', i === idx);
+      });
+
+      // Перерисовываем станции.
+      applyFilters();
+    }
+
+    // Обновляет текст заголовка карты.
+    function updateMapTitleText(text) {
+      const el = document.getElementById('map-title');
+      if (el) el.textContent = text;
+    }
+
+    // Строит переключатель между маршрутами (если их несколько).
+    function buildRoutesSwitcher() {
+      const panel = document.querySelector('.control-panel');
+      if (!panel) return;
+
+      // Убираем старый переключатель.
+      const old = document.getElementById('routes-switcher');
+      if (old) old.remove();
+
+      if (clientRoutes.length <= 1) return; // один маршрут — переключатель не нужен
+
+      const div = document.createElement('div');
+      div.className = 'routes-switcher';
+      div.id = 'routes-switcher';
+
+      clientRoutes.forEach((r, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'route-switch-btn' + (i === 0 ? ' active' : '');
+        btn.textContent = r.name;
+        btn.onclick = () => setActiveRoute(i);
+        div.appendChild(btn);
+      });
+
+      // Вставляем после заголовка (если есть) или в начало.
+      panel.insertBefore(div, panel.firstChild);
+    }
     // Показывает заголовок карты в панели управления сверху.
     function showMapTitle() {
       if (!clientMapTitle) return;
