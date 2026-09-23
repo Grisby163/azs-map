@@ -1453,22 +1453,10 @@
 
       // Отмеченные сети.
             // Отмеченные сети.
-      const selectedNetworkIds = getSelectedNetworkIds();
-
-      // Собираем список сетей для отправки.
-      // Если сети отмечены — берём их. Если нет, но есть маршрут — берём сети
-      // тех станций, что попали на маршрут. Иначе — все сети (пустой массив).
-      let visibleNetworks = selectedNetworkIds.slice();
-
-      if (visibleNetworks.length === 0 && routeGeojson && stationsOnRoute.length > 0) {
-        // Автоматически берём сети станций вдоль маршрута.
-        const netsFromRoute = new Set();
-        stationsOnRoute.forEach(s => {
-          if (s.network_id) netsFromRoute.add(s.network_id);
-        });
-        visibleNetworks = Array.from(netsFromRoute);
-      }
-
+            // Отмеченные сети. Если менеджер ничего не отметил — оставляем пустым,
+      // чтобы сервер отдал все видимые сети. Тогда на вкладке «Вся сеть»
+      // клиент увидит все станции.
+      const visibleNetworks = getSelectedNetworkIds().slice();
       setStatus('Создание карты...', '');
       document.getElementById('createCardBtn').disabled = true;
       document.getElementById('result').style.display = 'none';
