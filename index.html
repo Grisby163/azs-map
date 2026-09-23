@@ -1371,11 +1371,11 @@
       // ---------- 3. Шапка таблицы ----------
       const headerRowIdx = rowIdx;
             const headers = ['Название', 'Адрес', 'Сеть', 'Регион', 'Цена'];
-      headers.forEach((h, i) => {
+            headers.forEach((h, i) => {
         const cell = ws.getCell(headerRowIdx, i + 1);
         cell.value = h;
         cell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F1B16' } };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FF1F1B16' } },
@@ -1432,7 +1432,7 @@
           { value: address, align: 'left' },
           { value: network, align: 'left' },
           { value: region, align: 'left' },
-          { value: priceText, align: 'right', color: priceColor, bold: !!priceColor }
+                    { value: priceText, align: 'left', color: priceColor, bold: !!priceColor }
         ];
 
         cells.forEach((c, i) => {
