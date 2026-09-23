@@ -613,18 +613,26 @@
       return station.prices.find(p => p.fuel_type === fuel) || null;
     }
 
-        function getMarkerColor(station, price) {
+            function getMarkerColor(station, price) {
       // Явно заданные цвета сетей в админке.
       if (station.color_code === 1) return '#43A047'; // зелёный
       if (station.color_code === 2) return '#FF9800'; // оранжевый
       if (station.color_code === 3) return '#1E88E5'; // синий
 
-      // Авто (color_code 0): синий — только для скидок/наценок/Газа/без цены.
-      if (!price || price.is_discount) return '#1E88E5';
+      // Нет цены — синий.
+      if (!price) return '#1E88E5';
+
+      // Газовая станция без своей цены — синий.
       if (currentFuel === 'Газ') return '#1E88E5';
 
-      // Авто: градация по цене.
-      // Дешевле средней — зелёный, средняя и дороже — оранжевый.
+      // Текстовая цена (скидка или наценка) — цвет по слову в тексте.
+      if (price.is_discount) {
+        const text = (price.discount_text || '').toUpperCase();
+        if (text.includes('НАЦЕНКА')) return '#FF9800'; // оранжевый
+        return '#43A047'; // зелёный (скидка по умолчанию)
+      }
+
+      // Числовая цена: градация относительно средней.
       const validPrices = filteredStations
         .map(s => getPriceForFuel(s, currentFuel))
         .filter(p => p && !p.is_discount && p.price_value > 0)
@@ -688,9 +696,12 @@
         }
 
                 // Цена — отдельным блоком, цвет берётся от маркера.
+                // Цена — отдельным блоком, цвет берётся от маркера.
         if (price) {
           if (price.is_discount) {
-            popupContent += `<div class="popup-discount" style="color:${color}">Скидка: ${price.discount_text || 'уточняйте'}</div>`;
+            // Текстовая цена: префикс «Скидка:» убран, цвет по слову в тексте.
+            const text = (price.discount_text || 'уточняйте');
+            popupContent += `<div class="popup-discount" style="color:${color}">${text}</div>`;
           } else {
             popupContent += `<div class="popup-price" style="color:${color}">${price.price_value} ₽/л</div>`;
             if (station.market_price && !isNaN(station.market_price)) {
