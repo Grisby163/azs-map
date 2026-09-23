@@ -1348,15 +1348,19 @@
         ['Всего АЗС:', totalStations]
       ];
 
-      let rowIdx = 2;
+            let rowIdx = 2;
       rowsInfo.forEach(([label, value]) => {
         const labelCell = ws.getCell(`A${rowIdx}`);
         labelCell.value = label;
         labelCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF78716C' } };
+        labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
         const valueCell = ws.getCell(`B${rowIdx}`);
         valueCell.value = value;
         valueCell.font = { name: 'Arial', size: 12, color: { argb: 'FF1F1B16' } };
+        // Явное выравнивание по левому краю — чтобы «Всего АЗС»
+        // и другие числовые значения не уезжали вправо.
+        valueCell.alignment = { horizontal: 'left', vertical: 'middle' };
 
         // Особое выделение для лучшей цены.
         if (label === 'Лучшая цена:' && bestPrice !== null) {
