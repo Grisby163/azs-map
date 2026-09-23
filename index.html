@@ -65,7 +65,42 @@
       align-items: center;
       max-width: calc(100% - 28px);
     }
-
+    /* ---------- Вкладки «Вся сеть / Мой маршрут» ---------- */
+    .view-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      background: rgba(232, 225, 216, 0.5);
+      border-radius: 999px;
+      flex-basis: 100%;
+      justify-content: center;
+      margin-bottom: 6px;
+    }
+    .view-tab {
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .18s, color .18s, box-shadow .18s;
+      white-space: nowrap;
+    }
+    .view-tab:hover {
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--text);
+    }
+    .view-tab.active {
+      background: var(--gradient-accent);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
+    }
+    @media (max-width: 720px) {
+      .view-tab { padding: 6px 12px; font-size: 12px; }
+    }
     /* Кнопки топлива */
     .fuel-btn, .route-btn {
       padding: 8px 16px;
@@ -642,6 +677,13 @@
     let routeLine = null;
     let filteredStations = [];
 
+    // Текущий вид карты: 'route' (только маршрут) или 'network' (вся сеть).
+    // По умолчанию — маршрут, если он есть. Меняется кнопками сверху.
+    let currentView = 'route';
+
+    // Слой станций вдоль маршрута. Заполняется при построении карты в конструкторе.
+    // Если маршрута нет — пустой массив, и все станции показываются всегда.
+    let stationsOnRoute = [];
     // Новое: данные, приходящие из meta от quick-service
     let clientRouteGeojson = null;   // геометрия маршрута от менеджера
     let clientMapTitle = null;       // заголовок карты
@@ -740,17 +782,26 @@
       if (price.price_value < avg) return '#43A047'; // зелёный — дешевле среднего
       return '#FF9800'; // оранжевый — средняя и дороже
     }
-    function applyFilters() {
-      // Фильтруем только по топливу — станции уже отфильтрованы сервером
-      // по visible_station_ids / visible_networks.
-      const stations = allStations.filter(
+        function applyFilters() {
+      // Определяем базовый набор станций в зависимости от активной вкладки.
+      let baseStations;
+      if (clientRouteGeojson && currentView === 'route') {
+        // Вкладка «Мой маршрут» — только станции вдоль маршрута.
+        baseStations = stationsOnRoute;
+      } else {
+        // Вкладка «Вся сеть» или маршрута нет — все станции.
+        baseStations = allStations;
+      }
+
+      // Фильтруем по топливу.
+      const stations = baseStations.filter(
         station => getPriceForFuel(station, currentFuel) !== null
       );
       filteredStations = stations;
       displayStations(stations);
 
-      // Если у клиента есть маршрут — показываем панель сетей.
-            if (clientRouteGeojson) {
+      // Панель сетей справа показываем только на вкладке «Мой маршрут».
+      if (clientRouteGeojson && currentView === 'route') {
         updateNetworkPanel(stations);
         document.getElementById('network-panel').style.display = 'block';
         document.body.classList.add('has-network-panel');
@@ -1128,11 +1179,17 @@
           const showGreetingFlag = meta.show_greeting !== false;
 
           // Новое: читаем маршрут, заголовок и радиус из meta.
-          clientRouteGeojson = meta.route_geojson || null;
+                    clientRouteGeojson = meta.route_geojson || null;
           clientMapTitle = meta.map_title || null;
           clientRadiusKm = meta.radius_km || 5;
 
+          // Если есть маршрут — определяем, какие станции вдоль него.
+          if (clientRouteGeojson) {
+            computeStationsOnRoute();
+          }
+
           buildFuelButtons();
+          buildViewTabs();       // кнопки «Вся сеть / Мой маршрут» (если есть маршрут)
           drawClientRoute();     // рисуем линию маршрута (если есть)
           showMapTitle();        // показываем заголовок (если есть)
           applyFilters();        // рисуем станции
@@ -1150,7 +1207,81 @@
         // ============================================================
     // Шаг 10. Отрисовка маршрута клиента и заголовка карты
     // ============================================================
+    // ============================================================
+    // Пункт 3. Фильтрация станций вдоль маршрута
+    // ============================================================
 
+    // Определяет, какие станции попадают в радиус вдоль маршрута.
+    // Использует Turf.js — та же логика, что в конструкторе.
+    function computeStationsOnRoute() {
+      if (!clientRouteGeojson || !clientRouteGeojson.coordinates) {
+        stationsOnRoute = [];
+        return;
+      }
+      try {
+        const line = turf.lineString(clientRouteGeojson.coordinates);
+        const radiusKm = clientRadiusKm || 5;
+        stationsOnRoute = allStations.filter(station => {
+          if (!station.lat || !station.lon) return false;
+          const dist = turf.pointToLineDistance(
+            turf.point([station.lon, station.lat]),
+            line,
+            { units: 'kilometers' }
+          );
+          return dist <= radiusKm;
+        });
+      } catch (e) {
+        console.warn('Не удалось вычислить станции вдоль маршрута:', e);
+        stationsOnRoute = [];
+      }
+    }
+
+    // Строит кнопки-вкладки сверху. Показывает их только если есть маршрут.
+    function buildViewTabs() {
+      const panel = document.querySelector('.control-panel');
+      if (!panel) return;
+
+      // Убираем старые вкладки, если были.
+      const old = document.getElementById('view-tabs');
+      if (old) old.remove();
+
+      // Если маршрута нет — вкладки не нужны.
+      if (!clientRouteGeojson) return;
+
+      const div = document.createElement('div');
+      div.className = 'view-tabs';
+      div.id = 'view-tabs';
+      div.innerHTML = `
+        <button class="view-tab" data-view="network" onclick="switchView('network')">Вся сеть</button>
+        <button class="view-tab active" data-view="route" onclick="switchView('route')">Мой маршрут</button>
+      `;
+      panel.insertBefore(div, panel.firstChild);
+    }
+
+    // Переключение между вкладками.
+    function switchView(view) {
+      if (view === currentView) return;
+      currentView = view;
+
+      // Подсвечиваем активную кнопку.
+      document.querySelectorAll('.view-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.view === view);
+      });
+
+      // Показываем / скрываем маршрут.
+      if (view === 'route') {
+        if (clientRouteLine && !map.hasLayer(clientRouteLine)) {
+          clientRouteLine.addTo(map);
+        }
+      } else {
+        if (clientRouteLine && map.hasLayer(clientRouteLine)) {
+          map.removeLayer(clientRouteLine);
+        }
+      }
+
+      // Перерисовываем станции.
+      applyFilters();
+    }
     // Рисует линию маршрута, если он задан в meta.route_geojson.
     function drawClientRoute() {
       if (!clientRouteGeojson || !clientRouteGeojson.coordinates) return;
