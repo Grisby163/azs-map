@@ -112,6 +112,96 @@
     .leaflet-popup-tip {
       box-shadow: none !important;
     }
+          /* ---------- Звезда для лучшей цены ---------- */
+    .best-price-marker {
+      font-size: 28px;
+      line-height: 28px;
+      text-align: center;
+      color: #16A34A;
+      text-shadow:
+        0 0 0 #fff,
+        1px 1px 0 #fff,
+        -1px -1px 0 #fff,
+        1px -1px 0 #fff,
+        -1px 1px 0 #fff,
+        0 2px 6px rgba(0,0,0,0.35);
+      font-family: Arial, sans-serif;
+      font-weight: 900;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform .15s;
+    }
+    .best-price-marker:hover { transform: scale(1.15); }
+
+    /* ---------- Нижняя строка «Лучшая цена» ---------- */
+    #best-price-bar {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      z-index: 1500;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(31, 27, 22, 0.14);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      white-space: nowrap;
+      max-width: calc(100% - 28px);
+    }
+    #best-price-bar.visible { display: flex; }
+    #best-price-bar .star {
+      color: #16A34A;
+      font-size: 18px;
+      line-height: 1;
+    }
+    #best-price-bar .label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    #best-price-bar .value {
+      color: #16A34A;
+      font-weight: 700;
+      font-size: 16px;
+    }
+    #best-price-bar .network {
+      color: var(--text);
+      font-weight: 600;
+    }
+    #best-price-bar .show-btn {
+      padding: 7px 14px;
+      background: var(--gradient-accent);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      box-shadow: 0 2px 6px rgba(232, 114, 12, 0.3);
+      transition: transform .12s, box-shadow .18s;
+      margin: 0;
+    }
+    #best-price-bar .show-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(232, 114, 12, 0.4);
+    }
+
+    @media (max-width: 720px) {
+      #best-price-bar {
+        font-size: 12.5px;
+        padding: 8px 12px;
+        gap: 8px;
+        bottom: 10px;
+      }
+      #best-price-bar .value { font-size: 14px; }
+      #best-price-bar .show-btn { padding: 6px 10px; font-size: 12px; }
+    }
         .popup-price {
       font-size: 17px;
       font-weight: 700;
@@ -519,7 +609,13 @@
     </div>
   </div>
   <div id="greeting-banner" class="greeting-banner"></div>
-
+  <div id="best-price-bar">
+    <span class="star">★</span>
+    <span class="label">Лучшая цена:</span>
+    <span class="value" id="best-price-value">—</span>
+    <span class="network" id="best-price-network"></span>
+    <button class="show-btn" onclick="focusBestPrice()">Показать</button>
+  </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -664,26 +760,52 @@
       }
     }
 
-        function displayStations(stations) {
-      markersLayer.clearLayers();
+            // Хранит данные о лучшей цене, чтобы кнопка «Показать» знала, куда лететь.
+    let bestPriceStation = null;
+    let bestPriceValue = null;
 
-      // Определяем лучшую цену для текущего топлива, чтобы подсветить её зелёным.
-      const validPrices = stations
-        .map(s => getPriceForFuel(s, currentFuel))
-        .filter(p => p && !p.is_discount && p.price_value > 0)
-        .map(p => p.price_value);
-      const bestPrice = validPrices.length > 0 ? Math.min(...validPrices) : null;
+    function displayStations(stations) {
+      markersLayer.clearLayers();
+      bestPriceStation = null;
+      bestPriceValue = null;
+
+      // Находим станцию с самой низкой числовой ценой.
+      stations.forEach(station => {
+        const p = getPriceForFuel(station, currentFuel);
+        if (p && !p.is_discount && p.price_value > 0) {
+          if (bestPriceValue === null || p.price_value < bestPriceValue) {
+            bestPriceValue = p.price_value;
+            bestPriceStation = station;
+          }
+        }
+      });
 
       stations.forEach(station => {
         const price = getPriceForFuel(station, currentFuel);
         const color = getMarkerColor(station, price);
-        const marker = L.circleMarker([station.lat, station.lon], {
-          radius: 8,
-          fillColor: color,
-          color: '#fff',
-          weight: 2,
-          fillOpacity: 0.9
-        }).addTo(markersLayer);
+
+        let marker;
+        const isBest = bestPriceStation && station.id === bestPriceStation.id;
+
+        if (isBest) {
+          // Лучшая цена — зелёная звезда.
+          const icon = L.divIcon({
+            className: '',
+            html: '<div class="best-price-marker">★</div>',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+            popupAnchor: [0, -14]
+          });
+          marker = L.marker([station.lat, station.lon], { icon }).addTo(markersLayer);
+        } else {
+          marker = L.circleMarker([station.lat, station.lon], {
+            radius: 8,
+            fillColor: color,
+            color: '#fff',
+            weight: 2,
+            fillOpacity: 0.9
+          }).addTo(markersLayer);
+        }
 
                let popupContent = `<b>${station.name || 'АЗС'}</b>`;
 
