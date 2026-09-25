@@ -687,6 +687,13 @@
       padding-bottom: 8px;
       border-bottom: 1px dashed rgba(232, 225, 216, 0.8);
     }
+          /* Сети без цен для выбранного листа — приглушены */
+    .list-item.no-prices {
+      opacity: 0.55;
+    }
+    .list-item.no-prices:hover {
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
@@ -798,10 +805,20 @@
             </button>
           </div>
         </div>
-         <h2>2. Сети</h2>
+                <h2>2. Сети и цены</h2>
+
+        <div class="sub-block" style="margin-bottom:10px;">
+          <div class="sub-block-title">Ценовой лист</div>
+          <div class="form-group" style="margin-bottom:0;">
+            <select id="priceListSelect"></select>
+            <div id="priceListInfo" style="font-size:11.5px; color:var(--text-muted); margin-top:6px;"></div>
+          </div>
+        </div>
+
         <p style="font-size:12px; color:#666; margin-top:0;">
-          Отметьте сети, которые нужно показать. Если ни одна не отмечена — покажем все станции.<br>
-          <strong>Можно не строить маршрут:</strong> просто отметьте сети и нажмите «Создать карту» — получится карта со всеми станциями выбранных сетей.
+          Число рядом с сетью — сколько станций появится на карте с ценами для выбранного листа.
+          Сети без цен подсвечены серым — они не появятся на карте.<br>
+          <strong>Можно не строить маршрут:</strong> просто отметьте сети и нажмите «Создать карту».
         </p>
         <div style="margin-bottom:6px;">
           <button onclick="selectAllNetworks(true)" class="secondary" style="font-size:12px; padding:4px 8px;">Все</button>
@@ -817,10 +834,6 @@
         <div class="form-group">
           <label>Заголовок карты</label>
           <input type="text" id="mapTitle" placeholder="Например: Москва – Санкт-Петербург">
-        </div>
-        <div class="form-group">
-          <label>Ценовой лист</label>
-          <select id="priceListSelect"></select>
         </div>
         <div class="form-group">
           <label>Область для приветствия</label>
@@ -922,8 +935,10 @@
           loadPriceLists(),
           loadRegions()
         ]);
-        drawStations(allStations);
-        renderNetworksList(allNetworks);
+                drawStations(allStations);
+        // Список сетей рендерим с учётом выбранного ценового листа.
+        await updatePriceListInfo();
+        await refreshNetworksAvailability();
         await loadRouteTemplates();
 
         // Подключаем автосохранение черновика.
@@ -1191,7 +1206,7 @@
       allStations = Array.isArray(data) ? data : [];
     }
 
-    async function loadPriceLists() {
+      async function loadPriceLists() {
       const data = await fetchAdmin('price_lists');
       const select = document.getElementById('priceListSelect');
       select.innerHTML = '';
@@ -1203,6 +1218,17 @@
           select.appendChild(opt);
         });
       }
+
+      // Обработчик смены листа — обновляет информацию и список сетей.
+      select.addEventListener('change', async () => {
+        await updatePriceListInfo();
+        await refreshNetworksAvailability();
+        // Если маршрут построен — перезагружаем цены.
+        if (routeGeojson && stationsOnRoute.length > 0) {
+          await loadPricesForSelectedList();
+          drawStationsWithPrices(stationsOnRoute);
+        }
+      });
     }
 
     async function loadRegions() {
@@ -1257,24 +1283,92 @@
       }
       return '#607D8B';
     }
+        // ============================================================
+    // D. Информация о ценовом листе и доступности сетей
+    // ============================================================
 
+    // Показывает, сколько станций с ценами в выбранном листе.
+    async function updatePriceListInfo() {
+      const info = document.getElementById('priceListInfo');
+      const priceListId = document.getElementById('priceListSelect').value;
+      if (!info) return;
+      if (!priceListId) {
+        info.textContent = '';
+        return;
+      }
+      try {
+        const data = await fetchAdmin('prices_by_list', `price_list_id=${priceListId}`);
+        if (Array.isArray(data)) {
+          const withPrice = data.filter(item => item.price).length;
+          info.textContent = `Станций с ценами в этом листе: ${withPrice}.`;
+        } else {
+          info.textContent = '';
+        }
+      } catch (e) {
+        info.textContent = '';
+      }
+    }
+
+    // Возвращает Map: network_id → количество станций с ценами.
+    async function getNetworksWithPrices() {
+      const priceListId = document.getElementById('priceListSelect').value;
+      const result = new Map();
+      if (!priceListId) return result;
+
+      try {
+        const data = await fetchAdmin('prices_by_list', `price_list_id=${priceListId}`);
+        if (!Array.isArray(data)) return result;
+
+        // Строим карту station_id → network_id.
+        const stationNetworkMap = {};
+        allStations.forEach(s => {
+          if (s.id && s.network_id) stationNetworkMap[s.id] = s.network_id;
+        });
+
+        data.forEach(item => {
+          if (item.price && item.station_id) {
+            const netId = stationNetworkMap[item.station_id];
+            if (netId) {
+              result.set(netId, (result.get(netId) || 0) + 1);
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Не удалось получить доступность сетей:', e);
+      }
+      return result;
+    }
+
+    // Перерисовывает список сетей с учётом выбранного листа.
+    async function refreshNetworksAvailability() {
+      const priceCountMap = await getNetworksWithPrices();
+      renderNetworksList(allNetworks, priceCountMap);
+    }
     // ---------- Список сетей ----------
-    function renderNetworksList(networks) {
+      function renderNetworksList(networks, priceCountMap) {
       const container = document.getElementById('networksList');
       if (!networks.length) {
         container.innerHTML = '<div class="list-item disabled">Сетей нет</div>';
         return;
       }
-      const counts = {};
+
+      // Всего станций у каждой сети.
+      const totalCounts = {};
       allStations.forEach(s => {
-        if (s.network_id) counts[s.network_id] = (counts[s.network_id] || 0) + 1;
+        if (s.network_id) totalCounts[s.network_id] = (totalCounts[s.network_id] || 0) + 1;
       });
 
       container.innerHTML = '';
       networks.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         .forEach(net => {
+          const withPrice = priceCountMap ? (priceCountMap.get(net.id) || 0) : null;
+          const total = totalCounts[net.id] || 0;
+          const hasNoPrices = priceCountMap && withPrice === 0;
+
           const item = document.createElement('label');
-          item.className = 'list-item';
+          item.className = 'list-item' + (hasNoPrices ? ' no-prices' : '');
+          if (hasNoPrices) item.title = 'У этой сети нет цен для выбранного листа';
+
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.value = net.id;
@@ -1295,7 +1389,15 @@
 
           const count = document.createElement('span');
           count.className = 'count';
-          count.textContent = counts[net.id] || 0;
+          if (priceCountMap) {
+            count.textContent = `${withPrice} / ${total}`;
+            if (withPrice > 0) {
+              count.style.background = 'rgba(22, 163, 74, 0.15)';
+              count.style.color = '#166534';
+            }
+          } else {
+            count.textContent = total;
+          }
           item.appendChild(count);
 
           container.appendChild(item);
@@ -1888,9 +1990,15 @@
         radiusInput.value = source.radius_km || 5;
 
         // Ценовой лист.
+            // Ценовой лист.
         if (source.price_list_id) {
           const sel = document.getElementById('priceListSelect');
           sel.value = source.price_list_id;
+          // Обновляем доступность сетей для нового листа.
+          try {
+            await updatePriceListInfo();
+            await refreshNetworksAvailability();
+          } catch (e) {}
         }
 
         // Область для приветствия.
