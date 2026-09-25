@@ -1837,9 +1837,77 @@
       if (sel) sel.addEventListener('change', updateTemplateButtons);
     })();
         // ============================================================
-    // C. Предпросмотр карты в модальном окне
+    // E. Валидация перед созданием карты
     // ============================================================
 
+    // Возвращает массив строк-предупреждений. Пустой — всё в порядке.
+    async function validateBeforeCreate() {
+      const issues = [];
+
+      const priceListId = document.getElementById('priceListSelect').value;
+      const selectedNetworks = getSelectedNetworkIds();
+
+      // Считаем маршруты: из списка + текущий построенный (если списка нет).
+      let routesCount = routesList.length;
+      if (routesCount === 0 && routeGeojson) routesCount = 1;
+
+      // --- Проверка 1: ничего не выбрано ---
+      if (selectedNetworks.length === 0 && routesCount === 0) {
+        issues.push(
+          'Вы не выбрали ни сети, ни маршруты. Карта покажет ВСЕ видимые сети — ' +
+          'возможно, это не то, что нужно клиенту.'
+        );
+      }
+
+      // --- Проверка 2: у выбранных сетей нет цен для выбранного листа ---
+      if (selectedNetworks.length > 0 && priceListId) {
+        try {
+          const data = await fetchAdmin('prices_by_list', `price_list_id=${priceListId}`);
+          if (Array.isArray(data)) {
+            // Названия сетей, у которых есть цены в этом листе.
+            const networksWithPrices = new Set();
+            data.forEach(item => {
+              if (item.price && item.network) {
+                networksWithPrices.add(item.network);
+              }
+            });
+
+            // Названия выбранных сетей.
+            const selectedNetworkNames = allNetworks
+              .filter(n => selectedNetworks.includes(n.id))
+              .map(n => n.name);
+
+            const networksWithoutPrices = selectedNetworkNames
+              .filter(n => !networksWithPrices.has(n));
+
+            // Все выбранные сети без цен — карта будет пустой.
+            if (selectedNetworkNames.length > 0 &&
+                networksWithoutPrices.length === selectedNetworkNames.length) {
+              issues.push(
+                `У всех выбранных сетей нет цен для листа ` +
+                `«${document.getElementById('priceListSelect').selectedOptions[0]?.text || ''}». ` +
+                `Карта откроется пустой.`
+              );
+            } else if (networksWithoutPrices.length > 0) {
+              // Часть сетей без цен — они не появятся на карте.
+              issues.push(
+                `У сетей ${networksWithoutPrices.join(', ')} нет цен для выбранного листа — ` +
+                `они не появятся на карте.`
+              );
+            }
+          }
+        } catch (e) {
+          // Игнорируем ошибку запроса — валидация не критичная.
+          console.warn('Валидация: не удалось проверить цены сетей:', e);
+        }
+      }
+
+      return issues;
+    }
+        // ============================================================
+    // C. Предпросмотр карты в модальном окне
+    // ============================================================
+    
     async function openPreview() {
       // 1. Собираем данные — та же логика, что в createCard.
       const clientName = document.getElementById('clientName').value.trim() || 'Предпросмотр';
@@ -1849,9 +1917,20 @@
       const mapTitle = document.getElementById('mapTitle').value.trim();
       const radiusKm = parseFloat(document.getElementById('radiusKm').value) || 5;
 
-      if (!priceListId) {
+           if (!priceListId) {
         setStatus('Выберите ценовой лист для предпросмотра.', 'error');
         return;
+      }
+
+      // --- Валидация (та же, что для создания карты) ---
+      setStatus('Проверка данных...', '');
+      const issues = await validateBeforeCreate();
+      if (issues.length > 0) {
+        const msg = issues.join('\n\n') + '\n\nВсё равно открыть предпросмотр?';
+        if (!confirm(msg)) {
+          setStatus('Предпросмотр отменён. Внесите правки и попробуйте снова.', '');
+          return;
+        }
       }
 
       const selectedNetworkIds = getSelectedNetworkIds();
@@ -1925,7 +2004,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closePreview();
     });
-    async function createCard() {
+      async function createCard() {
       // ---------- 1. Собираем и валидируем данные ----------
       const clientName = document.getElementById('clientName').value.trim();
       const priceListId = document.getElementById('priceListSelect').value;
@@ -1941,6 +2020,17 @@
       if (!priceListId) {
         setStatus('Выберите ценовой лист.', 'error');
         return;
+      }
+
+      // --- Валидация перед отправкой ---
+      setStatus('Проверка данных...', '');
+      const issues = await validateBeforeCreate();
+      if (issues.length > 0) {
+        const msg = issues.join('\n\n') + '\n\nВсё равно создать карту?';
+        if (!confirm(msg)) {
+          setStatus('Создание отменено. Внесите правки и попробуйте снова.', '');
+          return;
+        }
       }
 
       // Отмеченные сети.
