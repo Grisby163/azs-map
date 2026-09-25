@@ -805,7 +805,7 @@
 
       async function initBuilder() {
       setStatus('Загрузка данных...');
-      try {
+           try {
         await Promise.all([
           loadNetworks(),
           loadStations(),
@@ -815,15 +815,43 @@
         drawStations(allStations);
         renderNetworksList(allNetworks);
         await loadRouteTemplates();
+
+        // Подключаем автосохранение черновика.
+        hookDraftAutosave();
+
         // Проверяем, пришли ли мы из админки по кнопке «Дублировать».
         const urlParams = new URLSearchParams(window.location.search);
         const fromToken = urlParams.get('from_token');
+
         if (fromToken) {
+          // Дублирование — черновик не подставляем, работаем по исходному токену.
           await preloadFromToken(fromToken);
         } else {
-          setStatus('Данные загружены. Кликните на карте, чтобы задать точки маршрута.', 'success');
-          document.getElementById('map-hint').textContent =
-            'Кликните на карте начальную точку, затем конечную. Промежуточные — между ними.';
+          // Проверяем, есть ли сохранённый черновик.
+          const draft = readDraft();
+          if (draft) {
+            const savedAt = draft.savedAt
+              ? new Date(draft.savedAt).toLocaleString('ru-RU')
+              : '—';
+            const proceed = confirm(
+              'Найдена незавершённая работа.\n' +
+              'Сохранена: ' + savedAt + '\n\n' +
+              'Продолжить её?\n\n' +
+              'ОК — продолжить, Отмена — начать заново.'
+            );
+            if (proceed) {
+              await restoreDraft(draft);
+            } else {
+              clearDraft();
+              setStatus('Данные загружены. Кликните на карте, чтобы задать точки маршрута.', 'success');
+              document.getElementById('map-hint').textContent =
+                'Кликните на карте начальную точку, затем конечную. Промежуточные — между ними.';
+            }
+          } else {
+            setStatus('Данные загружены. Кликните на карте, чтобы задать точки маршрута.', 'success');
+            document.getElementById('map-hint').textContent =
+              'Кликните на карте начальную точку, затем конечную. Промежуточные — между ними.';
+          }
         }
         updateBuildButtonState();
       } catch (e) {
@@ -837,7 +865,157 @@
       collapseAuthBlock();
       initBuilder();
     }
+          // ============================================================
+    // F. Автосохранение черновика в localStorage
+    // ============================================================
 
+    const DRAFT_KEY = 'azs_builder_draft_v1';
+    let draftSaveTimer = null;
+
+    // Собирает состояние формы в объект.
+    function collectDraft() {
+      return {
+        savedAt: new Date().toISOString(),
+        clientName: document.getElementById('clientName')?.value || '',
+        mapTitle: document.getElementById('mapTitle')?.value || '',
+        priceListId: document.getElementById('priceListSelect')?.value || '',
+        area: document.getElementById('areaSelect')?.value || '',
+        showGreeting: document.getElementById('showGreeting')?.value || 'true',
+        radiusKm: document.getElementById('radiusKm')?.value || '5',
+        excludeToll: document.getElementById('excludeToll')?.checked || false,
+        cityFrom: document.getElementById('cityFrom')?.value || '',
+        cityTo: document.getElementById('cityTo')?.value || '',
+        selectedNetworks: getSelectedNetworkIds(),
+        routesList: routesList.map(r => ({
+          id: r.id,
+          name: r.name,
+          geojson: r.geojson,
+          radius_km: r.radius_km,
+          lengthKm: r.lengthKm
+        })),
+        currentRoute: routeGeojson
+      };
+    }
+
+    // Сохраняет черновик с задержкой 500 мс.
+    // Задержка нужна, чтобы не писать в localStorage на каждый ввод символа.
+    function scheduleDraftSave() {
+      if (draftSaveTimer) clearTimeout(draftSaveTimer);
+      draftSaveTimer = setTimeout(() => {
+        try {
+          const draft = collectDraft();
+          // Если ничего существенного нет — не сохраняем пустой черновик.
+          const hasContent =
+            draft.clientName ||
+            draft.mapTitle ||
+            draft.routesList.length > 0 ||
+            draft.currentRoute ||
+            draft.selectedNetworks.length > 0;
+          if (hasContent) {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+          } else {
+            localStorage.removeItem(DRAFT_KEY);
+          }
+        } catch (e) {
+          console.warn('Не удалось сохранить черновик:', e);
+        }
+      }, 500);
+    }
+
+    // Читает черновик из localStorage. Возвращает объект или null.
+    function readDraft() {
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Удаляет черновик.
+    function clearDraft() {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch (e) {}
+    }
+
+    // Восстанавливает состояние формы из черновика.
+    async function restoreDraft(draft) {
+      // Простые поля.
+      if (draft.clientName) document.getElementById('clientName').value = draft.clientName;
+      if (draft.mapTitle) document.getElementById('mapTitle').value = draft.mapTitle;
+      if (draft.priceListId) document.getElementById('priceListSelect').value = draft.priceListId;
+      if (draft.area) document.getElementById('areaSelect').value = draft.area;
+      if (draft.showGreeting) document.getElementById('showGreeting').value = draft.showGreeting;
+      if (draft.radiusKm) document.getElementById('radiusKm').value = draft.radiusKm;
+      if (draft.excludeToll) document.getElementById('excludeToll').checked = true;
+      if (draft.cityFrom) document.getElementById('cityFrom').value = draft.cityFrom;
+      if (draft.cityTo) document.getElementById('cityTo').value = draft.cityTo;
+
+      // Отмеченные сети.
+      if (Array.isArray(draft.selectedNetworks) && draft.selectedNetworks.length > 0) {
+        document.querySelectorAll('.network-checkbox').forEach(cb => {
+          cb.checked = draft.selectedNetworks.includes(cb.value);
+        });
+      }
+
+      // Список маршрутов.
+      if (Array.isArray(draft.routesList)) {
+        routesList = draft.routesList.filter(r => r && r.geojson && r.geojson.coordinates);
+        renderRoutesList();
+      }
+
+      // Текущий нарисованный маршрут (если был).
+      if (draft.currentRoute && draft.currentRoute.coordinates) {
+        routeGeojson = draft.currentRoute;
+
+        if (routeLineLayer) map.removeLayer(routeLineLayer);
+        const latlngs = routeGeojson.coordinates.map(c => [c[1], c[0]]);
+        routeLineLayer = L.polyline(latlngs, {
+          color: '#1565C0',
+          weight: 5,
+          opacity: 0.85
+        }).addTo(map);
+        map.fitBounds(routeLineLayer.getBounds(), { padding: [50, 50] });
+
+        // Подгружаем цены и фильтруем станции.
+        await loadPricesForSelectedList();
+        filterStationsOnRoute();
+        drawStationsWithPrices(stationsOnRoute);
+      }
+
+      // Прогресс-шаги.
+      updateProgressSteps();
+
+      const savedAt = draft.savedAt
+        ? new Date(draft.savedAt).toLocaleString('ru-RU')
+        : '—';
+      setStatus(`Черновик восстановлен (сохранён: ${savedAt}).`, 'success');
+    }
+
+    // Подключает обработчики, чтобы любое изменение формы сохраняло черновик.
+    function hookDraftAutosave() {
+      const ids = [
+        'clientName', 'mapTitle', 'priceListSelect', 'areaSelect',
+        'showGreeting', 'radiusKm', 'excludeToll', 'cityFrom', 'cityTo'
+      ];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', scheduleDraftSave);
+        el.addEventListener('change', scheduleDraftSave);
+      });
+
+      // Чекбоксы сетей — через делегирование.
+      document.addEventListener('change', (e) => {
+        if (e.target.classList && e.target.classList.contains('network-checkbox')) {
+          scheduleDraftSave();
+        }
+      });
+    }
         function saveAdminKey() {
       const key = document.getElementById('adminKey').value.trim();
       if (!key) {
@@ -868,10 +1046,11 @@
     }
 
     // Выход: чистим ключ и разворачиваем блок.
-    function logoutAdmin() {
-      if (!confirm('Выйти из админ-режима? Данные не сохранятся.')) return;
+      function logoutAdmin() {
+      if (!confirm('Выйти из админ-режима? Черновик будет удалён.')) return;
       adminKey = '';
       localStorage.removeItem('adminKey');
+      clearDraft();
       document.getElementById('authSection').style.display = 'none';
       document.getElementById('adminKey').value = '';
       expandAuthBlock();
@@ -1184,6 +1363,7 @@
 
       // Авто-подстановка заголовка и области, если поля пустые.
       autoFillFormFromRoute(trimmed, routeGeojson);
+            scheduleDraftSave();
 
       setStatus(`Маршрут «${trimmed}» добавлен в список. Очистите текущий, чтобы нарисовать следующий.`, 'success');
     }
@@ -1283,9 +1463,10 @@
     }
 
     // Удаляет маршрут из списка.
-    function removeRouteFromList(id) {
+     function removeRouteFromList(id) {
       routesList = routesList.filter(r => r.id !== id);
       renderRoutesList();
+      scheduleDraftSave();
       setStatus('Маршрут удалён из списка.', '');
     }
 
@@ -2121,6 +2302,8 @@
           response: result
         }, null, 2);
 
+            // Успешно создали — черновик больше не нужен.
+        clearDraft();
         setStatus('Карта успешно создана. Ссылку можно отправлять клиенту.', 'success');
 
       } catch (e) {
