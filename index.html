@@ -326,7 +326,137 @@
       transition: transform .15s;
     }
     .best-price-marker:hover { transform: scale(1.15); }
+         /* ---------- Плашка топ-3 сетей (вкладка «Вся сеть», только ПК) ---------- */
+    #top-networks-bar {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      z-index: 1500;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 10px 14px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(31, 27, 22, 0.14);
+      display: none;
+      max-width: calc(100% - 28px);
+    }
+    #top-networks-bar.visible { display: block; }
 
+    .top-networks-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    .top-networks-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .top-networks-row::-webkit-scrollbar { display: none; }
+
+    .top-network-card {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      background: #FAF6F1;
+      border: 1px solid var(--border);
+      min-width: 180px;
+      transition: transform .12s, box-shadow .18s;
+    }
+    .top-network-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(31, 27, 22, 0.10);
+    }
+    .top-network-card.best {
+      background: linear-gradient(135deg, rgba(22, 163, 74, 0.12) 0%, rgba(22, 163, 74, 0.04) 100%);
+      border: 1.5px solid rgba(22, 163, 74, 0.4);
+    }
+    .top-network-card.best .tn-price {
+      color: #16A34A;
+      font-size: 18px;
+    }
+
+    .tn-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .tn-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .tn-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 140px;
+    }
+    .tn-region {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .tn-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .tn-price {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .tn-show-btn {
+      padding: 5px 10px;
+      background: var(--gradient-accent);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 11.5px;
+      font-weight: 700;
+      font-family: inherit;
+      box-shadow: 0 2px 5px rgba(232, 114, 12, 0.3);
+      transition: transform .12s, box-shadow .18s;
+      margin: 0;
+    }
+    .tn-show-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(232, 114, 12, 0.4);
+    }
+    .top-network-card.best .tn-show-btn {
+      background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+      box-shadow: 0 2px 5px rgba(22, 163, 74, 0.3);
+    }
+    .top-network-card.best .tn-show-btn:hover {
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+    }
+
+    /* На мобильной плашки нет — там работает нижняя панель сетей. */
+    @media (max-width: 820px) {
+      #top-networks-bar { display: none !important; }
+    }
     /* ---------- Нижняя строка «Лучшая цена» ---------- */
     #best-price-bar {
       position: fixed;
@@ -950,6 +1080,10 @@
     <span class="network" id="best-price-network"></span>
     <button class="show-btn" onclick="focusBestPrice()">Показать</button>
   </div>
+    <div id="top-networks-bar">
+    <div class="top-networks-title">Лучшие цены по стране</div>
+    <div class="top-networks-row" id="top-networks-row"></div>
+  </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1159,10 +1293,128 @@
       }
     }
 
-            // Хранит данные о лучшей цене, чтобы кнопка «Показать» знала, куда лететь.
+  
+    // Хранит данные о лучшей цене, чтобы кнопка «Показать» знала, куда лететь.
     let bestPriceStation = null;
     let bestPriceValue = null;
+    // Топ-3 сетей для плашки на вкладке «Вся сеть».
+    let topNetworksCache = [];
 
+    // Обновляет нижнюю строку «Лучшая цена».
+    // Показывается только на «Моём маршруте» (или если маршрута нет).
+    // На «Всей сети» (ПК) эта строка скрыта — там работает топ-3.
+    function updateBestPriceBar() {
+      const bar = document.getElementById('best-price-bar');
+      if (!bar) return;
+
+      const isNetworkView = !clientRouteGeojson || currentView === 'network';
+      if (isNetworkView && window.innerWidth > 820) {
+        bar.classList.remove('visible');
+        return;
+      }
+
+      if (!bestPriceStation || bestPriceValue === null) {
+        bar.classList.remove('visible');
+        return;
+      }
+      document.getElementById('best-price-value').textContent = bestPriceValue.toFixed(2) + ' ₽/л';
+      document.getElementById('best-price-network').textContent =
+        bestPriceStation.network_name ? '• ' + bestPriceStation.network_name : '';
+      bar.classList.add('visible');
+    }
+
+    // Кнопка «Показать» у строки «Лучшая цена» — центрирует и открывает попап.
+    function focusBestPrice() {
+      if (!bestPriceStation || !bestPriceStation.lat || !bestPriceStation.lon) return;
+      const latlng = [bestPriceStation.lat, bestPriceStation.lon];
+      map.setView(latlng, Math.max(map.getZoom(), 13), { animate: true });
+      markersLayer.eachLayer(layer => {
+        const ll = layer.getLatLng && layer.getLatLng();
+        if (ll && Math.abs(ll.lat - latlng[0]) < 0.00001 && Math.abs(ll.lng - latlng[1]) < 0.00001) {
+          if (layer.openPopup) layer.openPopup();
+        }
+      });
+    }
+
+    // Обновляет плашку топ-3 сетей. Только ПК и только «Вся сеть».
+    function updateTopNetworksBar() {
+      const bar = document.getElementById('top-networks-bar');
+      const row = document.getElementById('top-networks-row');
+      if (!bar || !row) return;
+
+      const isNetworkView = !clientRouteGeojson || currentView === 'network';
+      const isDesktop = window.innerWidth > 820;
+
+      if (!isNetworkView || !isDesktop) {
+        bar.classList.remove('visible');
+        topNetworksCache = [];
+        return;
+      }
+
+      // Группируем станции по сетям, считаем минимальную числовую цену.
+      const byNet = {};
+      filteredStations.forEach(station => {
+        const name = station.network_name || 'Прочие';
+        const p = getPriceForFuel(station, currentFuel);
+        if (!p || p.is_discount || !p.price_value) return;
+
+        if (!byNet[name]) {
+          byNet[name] = {
+            name,
+            region: station.region || '',
+            minPrice: p.price_value,
+            bestStation: station,
+            color: getMarkerColor(station, p)
+          };
+        } else if (p.price_value < byNet[name].minPrice) {
+          byNet[name].minPrice = p.price_value;
+          byNet[name].bestStation = station;
+        }
+      });
+
+      const sorted = Object.values(byNet).sort((a, b) => a.minPrice - b.minPrice).slice(0, 3);
+
+      if (sorted.length === 0) {
+        bar.classList.remove('visible');
+        topNetworksCache = [];
+        return;
+      }
+
+      topNetworksCache = sorted;
+
+      row.innerHTML = sorted.map((net, idx) => {
+        const isBest = idx === 0;
+        return `<div class="top-network-card ${isBest ? 'best' : ''}">
+          <div class="tn-header">
+            <span class="tn-dot" style="background:${net.color}"></span>
+            <span class="tn-name" title="${net.name}">${net.name}</span>
+          </div>
+          ${net.region ? `<div class="tn-region">${net.region}</div>` : ''}
+          <div class="tn-footer">
+            <span class="tn-price">${net.minPrice.toFixed(2)} ₽/л</span>
+            <button class="tn-show-btn" onclick="focusTopNetwork(${idx})">Показать</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      bar.classList.add('visible');
+    }
+
+    // Клик «Показать» на карточке сети — центрирует на лучшей АЗС этой сети.
+    function focusTopNetwork(idx) {
+      const net = topNetworksCache[idx];
+      if (!net || !net.bestStation) return;
+      const st = net.bestStation;
+      if (!st.lat || !st.lon) return;
+      const latlng = [st.lat, st.lon];
+      map.setView(latlng, Math.max(map.getZoom(), 13), { animate: true });
+      markersLayer.eachLayer(layer => {
+        const ll = layer.getLatLng && layer.getLatLng();
+        if (ll && Math.abs(ll.lat - latlng[0]) < 0.00001 && Math.abs(ll.lng - latlng[1]) < 0.00001) {
+          if (layer.openPopup) layer.openPopup();
+        }
+      });
+    }
     function displayStations(stations) {
       markersLayer.clearLayers();
       bestPriceStation = null;
@@ -1246,8 +1498,12 @@
         marker.bindPopup(popupContent);
       });
 
-            // fitBounds делаем только если нет маршрута — иначе карта уже подстроена
-      // под маршрут в drawClientRoute().
+              // Обновляем нижние плашки: «Лучшая цена» и топ-3 сетей.
+      updateBestPriceBar();
+      updateTopNetworksBar();
+
+      // fitBounds делаем только если нет маршрута — иначе карта уже подстроена
+      // под маршрут в drawClientRoutes().
       if (!clientRouteGeojson && stations.length > 0) {
         const bounds = L.latLngBounds(
           stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon])
@@ -2028,6 +2284,11 @@
 
       panel.insertBefore(div, panel.firstChild);
     }
+        // При смене размера окна — пересчитываем плашки.
+    window.addEventListener('resize', () => {
+      updateBestPriceBar();
+      updateTopNetworksBar();
+    });
   </script>
 </body>
 </html>
