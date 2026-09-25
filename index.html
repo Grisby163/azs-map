@@ -923,9 +923,9 @@
     </div>
   </div>
   <div id="map"></div>
-    <div class="network-panel" id="network-panel">
+      <div class="network-panel" id="network-panel">
     <div class="network-header">
-      <h4>АЗС на маршруте</h4>
+      <h4 id="network-panel-title">АЗС на маршруте</h4>
       <button class="panel-toggle" onclick="togglePanel()" title="Свернуть">▼</button>
     </div>
     <div class="network-list" id="network-list"></div>
@@ -1141,8 +1141,16 @@
       displayStations(stations);
 
       // Панель сетей справа показываем только на вкладке «Мой маршрут».
-      if (clientRouteGeojson && currentView === 'route') {
+          // Панель сетей справа показываем всегда, если есть станции.
+      // Заголовок меняется в зависимости от активной вкладки.
+      if (stations.length > 0) {
         updateNetworkPanel(stations);
+        const titleEl = document.getElementById('network-panel-title');
+        if (titleEl) {
+          titleEl.textContent = (clientRouteGeojson && currentView === 'route')
+            ? 'АЗС на маршруте'
+            : 'Все сети';
+        }
         document.getElementById('network-panel').style.display = 'block';
         document.body.classList.add('has-network-panel');
       } else {
@@ -1508,12 +1516,14 @@
 
       // Если маршрутов нет — делаем один лист по всем станциям.
       // Если есть — отдельный лист на каждый маршрут.
-      if (clientRoutes.length === 0) {
-        await addRouteSheet(wb, 'Все АЗС', filteredStations);
-      } else {
+            // Логика листов:
+      // - На вкладке «Мой маршрут» с маршрутами → отдельный лист на каждый маршрут.
+      // - На вкладке «Вся сеть» или на карте без маршрута → один лист «Вся сеть».
+      const useRouteSheets = clientRoutes.length > 0 && currentView === 'route';
+
+      if (useRouteSheets) {
         for (let i = 0; i < clientRoutes.length; i++) {
           const route = clientRoutes[i];
-          // Определяем станции для этого маршрута.
           const routeStations = allStations.filter(station => {
             if (!station.lat || !station.lon) return false;
             if (getPriceForFuel(station, currentFuel) === null) return false;
@@ -1531,6 +1541,9 @@
             .replace(/[\\\/\?\*\[\]:]/g, '').slice(0, 30);
           await addRouteSheet(wb, safeSheetName, routeStations);
         }
+      } else {
+        // «Вся сеть» — один общий лист.
+        await addRouteSheet(wb, 'Вся сеть', filteredStations);
       }
 
       // Сохранение.
