@@ -1299,7 +1299,28 @@
     let bestPriceValue = null;
     // Топ-3 сетей для плашки на вкладке «Вся сеть».
     let topNetworksCache = [];
+        // Центрирует карту так, чтобы попап маркера оказался в центре экрана.
+    // Сдвигаем цель вверх на offsetY пикселей — маркер окажется чуть ниже центра,
+    // а попап над ним — примерно по центру.
+    function focusWithOffset(latlng, zoom) {
+      const targetZoom = Math.max(map.getZoom(), zoom || 13);
+      const point = map.project(L.latLng(latlng[0], latlng[1]), targetZoom);
+      const offsetY = 100;
+      const newPoint = point.subtract([0, offsetY]);
+      const newLatLng = map.unproject(newPoint, targetZoom);
+      map.setView(newLatLng, targetZoom, { animate: true });
+    }
 
+    // Открывает попап маркера, ближайшего к заданной точке.
+    // Вызываем после анимации карты, чтобы попап появился в правильном месте.
+    function openPopupAt(latlng) {
+      markersLayer.eachLayer(layer => {
+        const ll = layer.getLatLng && layer.getLatLng();
+        if (ll && Math.abs(ll.lat - latlng[0]) < 0.00001 && Math.abs(ll.lng - latlng[1]) < 0.00001) {
+          if (layer.openPopup) layer.openPopup();
+        }
+      });
+    }
     // Обновляет нижнюю строку «Лучшая цена».
     // Показывается только на «Моём маршруте» (или если маршрута нет).
     // На «Всей сети» (ПК) эта строка скрыта — там работает топ-3.
@@ -1324,17 +1345,13 @@
     }
 
     // Кнопка «Показать» у строки «Лучшая цена» — центрирует и открывает попап.
-    function focusBestPrice() {
+        function focusBestPrice() {
       if (!bestPriceStation || !bestPriceStation.lat || !bestPriceStation.lon) return;
       const latlng = [bestPriceStation.lat, bestPriceStation.lon];
-      map.setView(latlng, Math.max(map.getZoom(), 13), { animate: true });
-      markersLayer.eachLayer(layer => {
-        const ll = layer.getLatLng && layer.getLatLng();
-        if (ll && Math.abs(ll.lat - latlng[0]) < 0.00001 && Math.abs(ll.lng - latlng[1]) < 0.00001) {
-          if (layer.openPopup) layer.openPopup();
-        }
-      });
+      focusWithOffset(latlng);
+      setTimeout(() => openPopupAt(latlng), 350);
     }
+    
 
     // Обновляет плашку топ-3 сетей. Только ПК и только «Вся сеть».
     function updateTopNetworksBar() {
@@ -1401,19 +1418,14 @@
     }
 
     // Клик «Показать» на карточке сети — центрирует на лучшей АЗС этой сети.
-    function focusTopNetwork(idx) {
+        function focusTopNetwork(idx) {
       const net = topNetworksCache[idx];
       if (!net || !net.bestStation) return;
       const st = net.bestStation;
       if (!st.lat || !st.lon) return;
       const latlng = [st.lat, st.lon];
-      map.setView(latlng, Math.max(map.getZoom(), 13), { animate: true });
-      markersLayer.eachLayer(layer => {
-        const ll = layer.getLatLng && layer.getLatLng();
-        if (ll && Math.abs(ll.lat - latlng[0]) < 0.00001 && Math.abs(ll.lng - latlng[1]) < 0.00001) {
-          if (layer.openPopup) layer.openPopup();
-        }
-      });
+      focusWithOffset(latlng);
+      setTimeout(() => openPopupAt(latlng), 350);
     }
     function displayStations(stations) {
       markersLayer.clearLayers();
@@ -1695,17 +1707,12 @@
     }
 
     // Центрирует карту на выбранной АЗС и открывает попап.
-    function focusStation(stationId) {
+        function focusStation(stationId) {
       const st = allStations.find(s => s.id === stationId);
       if (!st || !st.lat || !st.lon) return;
       const latlng = [st.lat, st.lon];
-      map.setView(latlng, Math.max(map.getZoom(), 13), { animate: true });
-      markersLayer.eachLayer(layer => {
-        const ll = layer.getLatLng && layer.getLatLng();
-        if (ll && Math.abs(ll.lat - latlng[0]) < 0.00001 && Math.abs(ll.lng - latlng[1]) < 0.00001) {
-          if (layer.openPopup) layer.openPopup();
-        }
-      });
+      focusWithOffset(latlng);
+      setTimeout(() => openPopupAt(latlng), 350);
     }
 
     // Сворачивает / разворачивает панель на мобильной.
