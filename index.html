@@ -168,6 +168,98 @@
     @media (max-width: 720px) {
       .route-switch-btn { padding: 6px 10px; font-size: 12px; }
     }
+          /* ---------- Фильтр топлива: кнопка и выпадающая плашка ---------- */
+    .fuel-filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: background .18s, border-color .18s, color .18s, box-shadow .18s;
+      white-space: nowrap;
+      box-shadow: none;
+      margin: 0;
+    }
+    .fuel-filter-btn:hover {
+      background: rgba(232, 114, 12, 0.08);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .fuel-filter-btn.open {
+      background: var(--gradient-accent);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
+    }
+    .fuel-filter-arrow {
+      font-size: 10px;
+      transition: transform .2s;
+      display: inline-block;
+    }
+    .fuel-filter-btn.open .fuel-filter-arrow {
+      transform: rotate(180deg);
+    }
+
+    .fuel-filter-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      background: var(--surface-glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card);
+      padding: 6px;
+      min-width: 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .fuel-option {
+      padding: 9px 14px;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--text);
+      text-align: left;
+      transition: background .15s, color .15s;
+      box-shadow: none;
+      margin: 0;
+      width: 100%;
+    }
+    .fuel-option:hover {
+      background: rgba(232, 114, 12, 0.10);
+      color: var(--accent);
+    }
+    .fuel-option.active {
+      background: var(--gradient-accent);
+      color: #fff;
+    }
+
+    @media (max-width: 720px) {
+      .fuel-filter-btn {
+        padding: 9px 14px;
+        font-size: 13px;
+        min-height: 38px;
+      }
+      .fuel-filter-dropdown {
+        min-width: 120px;
+      }
+    }
       /* Кнопки топлива */
     .fuel-btn, .route-btn {
       padding: 8px 16px;
@@ -816,8 +908,19 @@
   </style>
 </head>
 <body>
-  <div class="control-panel">
-    <div id="fuel-panel"></div>
+    <div class="control-panel">
+    <div id="fuel-filter-wrapper" style="position: relative;">
+      <button id="fuel-filter-btn" class="fuel-filter-btn" onclick="toggleFuelFilter(event)">
+        <span id="fuel-filter-label">Фильтр · ДТ-Л</span>
+        <span class="fuel-filter-arrow">▾</span>
+      </button>
+      <div id="fuel-filter-dropdown" class="fuel-filter-dropdown" style="display:none;">
+        <button class="fuel-option" data-fuel="ДТ-Л" onclick="selectFuel('ДТ-Л')">ДТ-Л</button>
+        <button class="fuel-option" data-fuel="ДТ-Е" onclick="selectFuel('ДТ-Е')">ДТ-Е</button>
+        <button class="fuel-option" data-fuel="ДТ-З" onclick="selectFuel('ДТ-З')">ДТ-З</button>
+        <button class="fuel-option" data-fuel="Газ" onclick="selectFuel('Газ')">Газ</button>
+      </div>
+    </div>
   </div>
   <div id="map"></div>
     <div class="network-panel" id="network-panel">
@@ -898,23 +1001,59 @@
       m7:  { name: "Москва – Владивосток (М7)", coords: [[37.6252,55.7530],[40.3966,56.1365],[43.9361,56.2965],[49.1233,55.7879],[56.2502,58.0105],[60.6057,56.8389],[65.5272,57.1522],[73.3682,54.9893],[82.9357,55.0084],[92.8526,56.0105],[104.2807,52.2864],[107.5842,51.8335],[113.4994,52.0340],[119.7308,53.7574],[127.2411,52.4493],[127.5274,50.2525],[135.0718,48.4802],[131.8855,43.1155]], radius: 5 }
     };
 
-    function buildFuelButtons() {
-      const fuels = ['ДТ-Л', 'ДТ-Е', 'ДТ-З', 'Газ'];
-      const container = document.getElementById('fuel-panel');
-      container.innerHTML = '';
-      fuels.forEach(fuel => {
-        const btn = document.createElement('button');
-        btn.className = 'fuel-btn' + (fuel === currentFuel ? ' active' : '');
-        btn.textContent = fuel;
-        btn.dataset.fuel = fuel;
-        btn.addEventListener('click', function() {
-          document.querySelectorAll('.fuel-btn').forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
-          currentFuel = this.dataset.fuel;
-          applyFilters();
-        });
-        container.appendChild(btn);
+        // ============================================================
+    // Фильтр топлива: раскрывающаяся плашка
+    // ============================================================
+
+    function updateFuelFilterLabel() {
+      const label = document.getElementById('fuel-filter-label');
+      if (label) label.textContent = 'Фильтр · ' + currentFuel;
+
+      // Подсвечиваем активный вариант в плашке.
+      document.querySelectorAll('.fuel-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.fuel === currentFuel);
       });
+    }
+
+    function toggleFuelFilter(event) {
+      if (event) event.stopPropagation();
+      const dropdown = document.getElementById('fuel-filter-dropdown');
+      const btn = document.getElementById('fuel-filter-btn');
+      if (!dropdown || !btn) return;
+      const isOpen = dropdown.style.display === 'flex' || dropdown.style.display === 'block';
+      if (isOpen) {
+        closeFuelFilter();
+      } else {
+        dropdown.style.display = 'flex';
+        btn.classList.add('open');
+      }
+    }
+
+    function closeFuelFilter() {
+      const dropdown = document.getElementById('fuel-filter-dropdown');
+      const btn = document.getElementById('fuel-filter-btn');
+      if (dropdown) dropdown.style.display = 'none';
+      if (btn) btn.classList.remove('open');
+    }
+
+    function selectFuel(fuel) {
+      currentFuel = fuel;
+      updateFuelFilterLabel();
+      closeFuelFilter();
+      applyFilters();
+    }
+
+    // Закрытие плашки при клике вне её.
+    document.addEventListener('click', function(e) {
+      const wrapper = document.getElementById('fuel-filter-wrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        closeFuelFilter();
+      }
+    });
+
+    // Инициализация фильтра при загрузке.
+    function initFuelFilter() {
+      updateFuelFilterLabel();
     }
 
     function buildRouteButtons() {
@@ -1636,17 +1775,17 @@
           clientRouteGeojson = clientRoutes.length > 0 ? clientRoutes[0].geojson : null;
           activeRouteIndex = 0;
 
-          buildFuelButtons();
+                    initFuelFilter();
           buildViewTabs();
-          buildRoutesSwitcher();  // переключатель между маршрутами (если их несколько)
-          drawClientRoutes();     // рисуем все линии маршрутов
-          computeStationsOnRoute(); // считаем станции вдоль активного маршрута
+          buildRoutesSwitcher();
+          drawClientRoutes();
+          computeStationsOnRoute();
           showMapTitle();
           applyFilters();
           showGreeting(area, showGreetingFlag);
-        } else {
+                } else {
           allStations = data;
-          buildFuelButtons();
+          initFuelFilter();
           applyFilters();
         }
       })
