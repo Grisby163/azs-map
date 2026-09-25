@@ -1046,10 +1046,12 @@
 
     // Добавляет текущий построенный маршрут в список.
     function addCurrentRoute() {
-      if (!routeGeojson || !routeGeojson.coordinates) {
+            if (!routeGeojson || !routeGeojson.coordinates) {
         setStatus('Сначала постройте маршрут.', 'error');
         return;
       }
+      // Спрашиваем название.
+      
       // Спрашиваем название.
       const name = prompt('Название маршрута (например, «Москва – Тверь»):',
         document.getElementById('mapTitle').value.trim() || '');
@@ -1069,7 +1071,7 @@
         lengthKm = null;
       }
 
-      routesList.push({
+           routesList.push({
         id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
         name: trimmed,
         geojson: routeGeojson,
@@ -1078,7 +1080,77 @@
       });
 
       renderRoutesList();
+
+      // Авто-подстановка заголовка и области, если поля пустые.
+      autoFillFormFromRoute(trimmed, routeGeojson);
+
       setStatus(`Маршрут «${trimmed}» добавлен в список. Очистите текущий, чтобы нарисовать следующий.`, 'success');
+    }
+
+    // ============================================================
+    // H + I. Авто-подстановка заголовка карты и области приветствия
+    // ============================================================
+
+    function autoFillFormFromRoute(routeName, geojson) {
+      // H: заголовок карты — только если пусто.
+      const titleInput = document.getElementById('mapTitle');
+      if (titleInput && !titleInput.value.trim() && routeName) {
+        titleInput.value = routeName;
+      }
+
+      // I: область приветствия — только если стоит «Без сообщения».
+      const areaSelect = document.getElementById('areaSelect');
+      if (areaSelect && !areaSelect.value && geojson && geojson.coordinates) {
+        const region = mostCommonRegionOnRoute(geojson);
+        if (region) {
+          // Проверяем, что такая опция есть в списке.
+          const options = Array.from(areaSelect.options).map(o => o.value);
+          if (options.includes(region)) {
+            areaSelect.value = region;
+          }
+        }
+      }
+    }
+
+    // Ищет самую частую область среди станций вдоль маршрута.
+    // Использует allStations, которые уже загружены в конструкторе.
+    function mostCommonRegionOnRoute(geojson) {
+      try {
+        const line = turf.lineString(geojson.coordinates);
+        const radiusKm = parseFloat(document.getElementById('radiusKm').value) || 5;
+
+        // Станции вдоль маршрута.
+        const onRoute = allStations.filter(station => {
+          if (!station.lat || !station.lon || !station.region) return false;
+          const dist = turf.pointToLineDistance(
+            turf.point([station.lon, station.lat]),
+            line,
+            { units: 'kilometers' }
+          );
+          return dist <= radiusKm;
+        });
+
+        if (onRoute.length === 0) return null;
+
+        // Считаем частоту регионов.
+        const counts = {};
+        onRoute.forEach(s => {
+          counts[s.region] = (counts[s.region] || 0) + 1;
+        });
+
+        // Самый частый.
+        let bestRegion = null;
+        let bestCount = 0;
+        for (const region in counts) {
+          if (counts[region] > bestCount) {
+            bestCount = counts[region];
+            bestRegion = region;
+          }
+        }
+        return bestRegion;
+      } catch (e) {
+        return null;
+      }
     }
 
     // Отрисовка списка добавленных маршрутов.
