@@ -476,6 +476,42 @@
       border-color: #DC2626;
     }
     }
+          /* ---------- Свёрнутая строка «Вы вошли как администратор» ---------- */
+    .auth-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(22, 163, 74, 0.08);
+      border: 1px solid rgba(22, 163, 74, 0.3);
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      margin-bottom: 10px;
+    }
+    .auth-info-text {
+      color: #166534;
+      font-weight: 600;
+    }
+    .auth-logout-btn {
+      background: transparent;
+      border: 1px solid rgba(22, 163, 74, 0.4);
+      color: #166534;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 11.5px;
+      font-weight: 600;
+      font-family: inherit;
+      box-shadow: none;
+      margin: 0;
+      transition: background .15s, color .15s;
+    }
+    .auth-logout-btn:hover {
+      background: #16A34A;
+      color: #fff;
+      border-color: #16A34A;
+    }
   </style>
   </style>
 </head>
@@ -485,12 +521,17 @@
     <div id="sidebar">
       <h1>Конструктор карт АЗС</h1>
 
-      <div class="form-group">
+            <div id="authBlock" class="form-group">
         <label for="adminKey">Ключ администратора</label>
         <input type="password" id="adminKey" placeholder="Введите ключ">
         <div style="margin-top:6px;">
           <button onclick="saveAdminKey()">Сохранить ключ</button>
         </div>
+      </div>
+
+      <div id="authInfo" class="auth-info" style="display:none;">
+        <span class="auth-info-text">Вы вошли как администратор</span>
+        <button class="auth-logout-btn" onclick="logoutAdmin()">Выйти</button>
       </div>
 
       <div id="authSection" style="display:none;">
@@ -606,9 +647,7 @@
         <button onclick="createCard()" id="createCardBtn" style="width:100%; margin-top:10px; font-size:14px; padding:10px;">
           Создать карту
         </button>
-                 <button onclick="downloadGeoJSON()" id="downloadGeoJSONBtn" class="secondary" style="width:100%; margin-top:8px; font-size:13px; padding:8px;">
-          📥 Скачать GeoJSON
-        </button>
+                 
         <div id="status"></div>
         <div id="result"></div>
 
@@ -616,7 +655,14 @@
           <summary>Показать технические детали</summary>
           <div id="techDetails" style="margin-top:6px; font-size:11px; font-family:monospace;"></div>
         </details>
-
+                 <details style="margin-top:8px;">
+          <summary>Дополнительно</summary>
+          <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+            <button onclick="downloadGeoJSON()" id="downloadGeoJSONBtn" class="secondary" style="width:100%; font-size:12.5px; padding:8px;">
+              📥 Скачать GeoJSON
+            </button>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -684,19 +730,56 @@
       }
     }
 
-    if (adminKey) {
+       if (adminKey) {
       document.getElementById('adminKey').value = adminKey;
       document.getElementById('authSection').style.display = 'block';
+      collapseAuthBlock();
       initBuilder();
     }
 
-    function saveAdminKey() {
+        function saveAdminKey() {
       const key = document.getElementById('adminKey').value.trim();
-      if (!key) { alert('Введите ключ'); return; }
+      if (!key) {
+        alert('Введите ключ');
+        return;
+      }
       adminKey = key;
       localStorage.setItem('adminKey', key);
       document.getElementById('authSection').style.display = 'block';
+      collapseAuthBlock();
       initBuilder();
+    }
+
+    // Скрывает блок с полем ключа, показывает строку «Вы вошли».
+    function collapseAuthBlock() {
+      const block = document.getElementById('authBlock');
+      const info = document.getElementById('authInfo');
+      if (block) block.style.display = 'none';
+      if (info) info.style.display = 'flex';
+    }
+
+    // Разворачивает блок обратно — для смены ключа.
+    function expandAuthBlock() {
+      const block = document.getElementById('authBlock');
+      const info = document.getElementById('authInfo');
+      if (block) block.style.display = 'block';
+      if (info) info.style.display = 'none';
+    }
+
+    // Выход: чистим ключ и разворачиваем блок.
+    function logoutAdmin() {
+      if (!confirm('Выйти из админ-режима? Данные не сохранятся.')) return;
+      adminKey = '';
+      localStorage.removeItem('adminKey');
+      document.getElementById('authSection').style.display = 'none';
+      document.getElementById('adminKey').value = '';
+      expandAuthBlock();
+      // Очищаем карту от станций и маршрутов.
+      if (stationsLayer) map.removeLayer(stationsLayer);
+      clientRoutes = [];
+      clearRoutePoints();
+      renderRoutesList();
+      setStatus('Вы вышли из админ-режима.', '');
     }
 
     // ---------- Запросы ----------
