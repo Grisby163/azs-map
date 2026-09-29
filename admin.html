@@ -434,6 +434,13 @@
 
       <div id="import" class="tab-content">
         <h2>Импорт из Excel</h2>
+                <div style="padding:12px 14px; background:var(--warn-bg); border:1px solid #FDE68A; border-radius:var(--radius-sm); margin-bottom:14px; font-size:12.5px; line-height:1.6; color:#92400E;">
+          <b>Формат текстовых цен в колонке C:</b><br>
+          • Наценка: <code style="background:#fff; padding:1px 6px; border-radius:4px;">НАЦЕНКА +1,5%</code><br>
+          • Скидка: <code style="background:#fff; padding:1px 6px; border-radius:4px;">СКИДКА -1,8%</code><br>
+          • Пробелы допустимы, разделитель — запятая.<br>
+          Если текст не совпадает с форматом — он копируется во все листы без изменений.
+        </div>
         <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
         <div id="importStatus"></div>
         <div id="mappingSection" style="display:none;">
