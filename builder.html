@@ -1584,12 +1584,8 @@
     // H + I. Авто-подстановка заголовка карты и области приветствия
     // ============================================================
 
-    function autoFillFormFromRoute(routeName, geojson) {
-      // H: заголовок карты — только если пусто.
-      const titleInput = document.getElementById('mapTitle');
-      if (titleInput && !titleInput.value.trim() && routeName) {
-        titleInput.value = routeName;
-      }
+      function autoFillFormFromRoute(routeName, geojson) {
+      // Авто-подстановка заголовка карты убрана — менеджер заполняет вручную.
 
       // I: область приветствия — только если стоит «Без сообщения».
       const areaSelect = document.getElementById('areaSelect');
