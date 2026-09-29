@@ -331,7 +331,6 @@
       }
     }
   </style>
-  </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -503,24 +502,10 @@
       }
     }
 
-     async function loadPriceListsForForm() {
-      try {
-        const data = await fetchAdmin('price_lists');
-        const select = document.getElementById('priceListSelect');
-        if (!select) return; // вкладка «Создать карту» убрана — селекта больше нет
-        select.innerHTML = '';
-        ...
-        if (Array.isArray(data)) {
-          data.forEach(pl => {
-            const opt = document.createElement('option');
-            opt.value = pl.id;
-            opt.textContent = pl.name;
-            select.appendChild(opt);
-          });
-        }
-      } catch (e) {
-        console.error(e);
-      }
+    async function loadPriceListsForForm() {
+      // Вкладка «Создать карту» убрана — селект priceListSelect больше не существует.
+      // Функция оставлена как заглушка, чтобы не ломать старые вызовы.
+      return;
     }
 
     async function loadNetworks() {
