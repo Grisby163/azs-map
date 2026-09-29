@@ -848,7 +848,13 @@
             <option value="false">Нет</option>
           </select>
         </div>
-
+                 <div class="form-group">
+          <label>Срок действия карты, дней</label>
+          <input type="number" id="ttlDays" value="5" min="1" max="90" step="1">
+          <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+            От 1 до 90. По умолчанию — 5.
+          </div>
+        </div>
               <div style="display:flex; gap:6px; margin-top:10px;">
           <button onclick="openPreview()" id="previewBtn" class="secondary" style="flex:0 0 auto; font-size:13px; padding:10px 14px;">
             👁 Предпросмотр
