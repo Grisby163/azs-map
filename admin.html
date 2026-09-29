@@ -349,7 +349,6 @@
         <span class="tab" onclick="switchTab('networks')">Сети</span>
         <span class="tab" onclick="switchTab('stations')">Станции</span>
         <span class="tab" onclick="switchTab('priceLists')">Ценовые листы</span>
-        <span class="tab" onclick="switchTab('create')">Создать карту</span>
         <span class="tab" onclick="switchTab('import')">Импорт</span>
         <span class="tab" onclick="switchTab('prices')">Цены</span>
         <span class="tab" onclick="switchTab('clear')">Очистка</span>
@@ -387,32 +386,6 @@
         <div id="priceListsTable"></div>
       </div>
 
-            <div id="create" class="tab-content">
-        <h2>Создать карту</h2>
-        <div class="form-group">
-          <label>Имя клиента</label>
-          <input type="text" id="clientName" placeholder="Название">
-        </div>
-        <div class="form-group">
-          <label>Область</label>
-          <select id="areaSelect">
-            <option value="">Без сообщения</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Показывать приветствие</label>
-          <select id="showGreeting">
-            <option value="true">Да</option>
-            <option value="false">Нет</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Ценовой лист</label>
-          <select id="priceListSelect"></select>
-        </div>
-        <button onclick="createCard()">Создать карту</button>
-        <div id="createResult" class="msg"></div>
-      </div>
 
       <div id="import" class="tab-content">
         <h2>Импорт из Excel</h2>
@@ -480,19 +453,15 @@
     if (adminKey) {
       document.getElementById('adminKey').value = adminKey;
       document.getElementById('authSection').classList.remove('hidden');
-      loadPriceListsForForm();
-      loadRegions();
       loadTokens();
       loadPriceListsForPrices();
     }
 
-    function saveAdminKey() {
+     function saveAdminKey() {
       adminKey = document.getElementById('adminKey').value.trim();
       if (adminKey) {
         localStorage.setItem('adminKey', adminKey);
         document.getElementById('authSection').classList.remove('hidden');
-        loadPriceListsForForm();
-        loadRegions();
         loadTokens();
         loadPriceListsForPrices();
       } else {
@@ -534,11 +503,13 @@
       }
     }
 
-    async function loadPriceListsForForm() {
+     async function loadPriceListsForForm() {
       try {
         const data = await fetchAdmin('price_lists');
         const select = document.getElementById('priceListSelect');
+        if (!select) return; // вкладка «Создать карту» убрана — селекта больше нет
         select.innerHTML = '';
+        ...
         if (Array.isArray(data)) {
           data.forEach(pl => {
             const opt = document.createElement('option');
@@ -742,43 +713,7 @@ async function loadRegions() {
     console.error(e);
   }
 }
-    async function createCard() {
-      const clientName = document.getElementById('clientName').value.trim();
-      const area = document.getElementById('areaSelect').value;
-      const showGreeting = document.getElementById('showGreeting').value === 'true';
-      const priceListId = document.getElementById('priceListSelect').value;
-
-      if (!clientName || !priceListId) {
-        alert('Заполните имя клиента и выберите ценовой лист');
-        return;
-      }
-
-      const payload = {
-        client_name: clientName,
-        area: area,
-        show_greeting: showGreeting,
-        price_list_id: priceListId,
-        visible_networks: []
-      };
-
-      try {
-        const response = await fetch(`${ADMIN_BASE_URL}/quick-function`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Ошибка создания');
-        document.getElementById('createResult').innerHTML = `
-          <p>Карта создана!</p>
-          <p>Длинная ссылка: <a href="${result.long_url}" target="_blank">${result.long_url}</a></p>
-          <p>Короткая ссылка: <a href="${result.short_url}" target="_blank">${result.short_url}</a></p>
-        `;
-        loadTokens();
-      } catch (e) {
-        document.getElementById('createResult').innerHTML = `<p style="color:red;">Ошибка: ${e.message}</p>`;
-      }
-    }
+  
     let importData = null; // здесь будет храниться распарсенный результат
 
 function handleExcelUpload(event) {
