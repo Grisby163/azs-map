@@ -2332,16 +2332,7 @@
         return;
       }
 
-      // --- Валидация (та же, что для создания карты) ---
-      setStatus('Проверка данных...', '');
-      const issues = await validateBeforeCreate();
-      if (issues.length > 0) {
-        const msg = issues.join('\n\n') + '\n\nВсё равно открыть предпросмотр?';
-        if (!confirm(msg)) {
-          setStatus('Предпросмотр отменён. Внесите правки и попробуйте снова.', '');
-          return;
-        }
-      }
+ 
 
       const selectedNetworkIds = getSelectedNetworkIds();
       const visibleNetworks = selectedNetworkIds.slice();
@@ -2432,16 +2423,7 @@
         return;
       }
 
-      // --- Валидация перед отправкой ---
-      setStatus('Проверка данных...', '');
-      const issues = await validateBeforeCreate();
-      if (issues.length > 0) {
-        const msg = issues.join('\n\n') + '\n\nВсё равно создать карту?';
-        if (!confirm(msg)) {
-          setStatus('Создание отменено. Внесите правки и попробуйте снова.', '');
-          return;
-        }
-      }
+      
 
       // Отмеченные сети.
             // Отмеченные сети.
