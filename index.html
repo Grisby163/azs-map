@@ -1070,6 +1070,72 @@
       color: #fff;
       box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
     }
+          /* ---------- Панель фильтра внешних сетей (на вкладке «Все сети») ---------- */
+    .external-filter-panel {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 1001;
+      background: var(--surface-glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 12px 14px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      border: 1px solid var(--border);
+      max-width: 260px;
+      font-size: 13px;
+    }
+    .external-filter-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .external-filter-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .external-filter-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background .15s;
+    }
+    .external-filter-item:hover {
+      background: rgba(232, 114, 12, 0.08);
+    }
+    .external-filter-item input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      flex-shrink: 0;
+    }
+    .external-filter-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(31,27,22,0.08);
+    }
+    @media (max-width: 820px) {
+      .external-filter-panel {
+        top: auto;
+        bottom: 14px;
+        right: 8px;
+        left: 8px;
+        max-width: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1093,6 +1159,10 @@
       <h4 id="network-panel-title">АЗС на маршруте</h4>
       <button class="panel-toggle" onclick="togglePanel()" title="Свернуть">▼</button>
     </div>
+          <div id="external-filter-panel" class="external-filter-panel" style="display:none;">
+    <div class="external-filter-title">Сети на карте</div>
+    <div id="external-filter-list" class="external-filter-list"></div>
+  </div>
     <div class="network-list" id="network-list"></div>
     <button class="download-btn" onclick="downloadExcel()">📥 Скачать Excel</button>
   </div>
@@ -2230,11 +2300,12 @@
         fuelFilter.style.display = (view === 'external') ? 'none' : '';
       }
 
-      // Рисуем внешние станции при переходе на вкладку «Другая сеть».
+         // Рисуем внешние станции при переходе на вкладку «Другая сеть».
       if (view === 'external') {
         drawExternalStations();
       } else {
         hideExternalStations();
+        hideExternalFilterPanel();
       }
 
       // Перерисовываем станции партнёрской сети.
@@ -2332,15 +2403,35 @@
     // Внешние сети: отрисовка с кластеризацией
     // ============================================================
 
-    function drawExternalStations() {
+       function drawExternalStations() {
       hideExternalStations();
 
-      const stations = clientExternalStations.filter(
-        s => s.network_name === currentExternalNetwork
-      );
+      // Какие станции показывать.
+      let stations;
+      if (currentExternalNetwork === '__all__') {
+        // Все разрешённые сети + фильтр по галочкам.
+        const enabled = getEnabledExternalNetworks();
+        stations = clientExternalStations.filter(s => enabled.includes(s.network_name));
+        // Показать панель фильтра.
+        showExternalFilterPanel();
+      } else {
+        // Конкретная сеть — без фильтра.
+        stations = clientExternalStations.filter(s => s.network_name === currentExternalNetwork);
+        hideExternalFilterPanel();
+      }
+
       if (stations.length === 0) return;
 
-      // Создаём кластерную группу.
+      // Цвет для маркера — по сети.
+      const colorFor = (netName) => externalColors[netName] || '#888888';
+
+      // Кластерная группа. Цвет кластера — если все станции одной сети, берём её цвет,
+      // если разных — нейтральный серый.
+      const uniqueNets = new Set(stations.map(s => s.network_name));
+      const clusterColor = uniqueNets.size === 1
+        ? colorFor([...uniqueNets][0])
+        : '#607D8B';
+
       externalLayer = L.markerClusterGroup({
         maxClusterRadius: 60,
         showCoverageOnHover: false,
@@ -2348,10 +2439,9 @@
         disableClusteringAtZoom: 14,
         iconCreateFunction: function (cluster) {
           const count = cluster.getChildCount();
-          const color = externalColors[currentExternalNetwork] || '#888888';
           return L.divIcon({
             html: `<div style="
-              background:${color};
+              background:${clusterColor};
               color:#fff;
               width:42px;
               height:42px;
@@ -2370,10 +2460,9 @@
         },
       });
 
-      const color = externalColors[currentExternalNetwork] || '#888888';
-
-          stations.forEach(s => {
+      stations.forEach(s => {
         if (!s.lat || !s.lon) return;
+        const color = colorFor(s.network_name);
         const marker = L.circleMarker([s.lat, s.lon], {
           radius: 10,
           fillColor: color,
@@ -2383,7 +2472,7 @@
         });
         const popup = `
           <b>${s.name || (s.station_number ? 'АЗС №' + s.station_number : 'АЗС')}</b>
-          <div style="font-size:11.5px; color:#666; margin-top:2px;">${currentExternalNetwork}</div>
+          <div style="font-size:11.5px; color:#666; margin-top:2px;">${s.network_name}</div>
           ${s.address ? `<div class="popup-address-row"><span>${s.address}</span>
             <button class="copy-addr-btn" onclick="copyExternalAddress('${s.id}', this)" title="Скопировать">📋</button>
           </div>` : ''}
@@ -2393,7 +2482,8 @@
         externalLayer.addLayer(marker);
       });
 
-         externalLayer.addTo(map);
+      externalLayer.addTo(map);
+    }
 
       // НЕ подгоняем карту под все станции сразу — их тысячи по всей стране.
       // Показываем текущий вид. Пользователь сам двигает карту и зумит.
@@ -2406,7 +2496,70 @@
       }
       externalLayer = null;
     }
+    // ============================================================
+    // Фильтр внешних сетей (только в режиме «Все сети»)
+    // ============================================================
 
+    // Возвращает массив разрешённых сетей (по умолчанию — все).
+    function getEnabledExternalNetworks() {
+      const checkboxes = document.querySelectorAll('.external-filter-checkbox');
+      if (checkboxes.length === 0) {
+        // Чекбоксов ещё нет — значит все включены.
+        const all = Array.from(new Set(clientExternalStations.map(s => s.network_name)));
+        return all;
+      }
+      return Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+    }
+
+    // Показывает панель фильтра и строит чекбоксы (один раз).
+    function showExternalFilterPanel() {
+      const panel = document.getElementById('external-filter-panel');
+      const list = document.getElementById('external-filter-list');
+      if (!panel || !list) return;
+
+      // Строим список, если ещё не построен.
+      if (list.children.length === 0) {
+        const allNets = Array.from(new Set(clientExternalStations.map(s => s.network_name)));
+        allNets.sort();
+        list.innerHTML = '';
+        allNets.forEach(name => {
+          const label = document.createElement('label');
+          label.className = 'external-filter-item';
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.value = name;
+          cb.className = 'external-filter-checkbox';
+          cb.checked = true;
+          cb.addEventListener('change', () => {
+            // Перерисовываем станции при изменении фильтра.
+            drawExternalStations();
+          });
+          label.appendChild(cb);
+
+          const dot = document.createElement('span');
+          dot.className = 'external-filter-dot';
+          dot.style.background = externalColors[name] || '#888888';
+          label.appendChild(dot);
+
+          const span = document.createElement('span');
+          span.textContent = name;
+          label.appendChild(span);
+
+          list.appendChild(label);
+        });
+      }
+
+      panel.style.display = 'block';
+    }
+
+    // Скрывает панель фильтра.
+    function hideExternalFilterPanel() {
+      const panel = document.getElementById('external-filter-panel');
+      if (panel) panel.style.display = 'none';
+    }
     function copyExternalAddress(id, btnEl) {
       const s = clientExternalStations.find(x => x.id === id);
       if (!s || !s.address) return;
@@ -2423,7 +2576,10 @@
       }
     }
 
-    // Строит под-переключатель по внешним сетям.
+     // Строит под-переключатель по внешним сетям.
+    // Логика:
+    //   - Если разрешена 1 сеть — только она, без «Все сети».
+    //   - Если 2+ сетей — добавляем «Все сети» + каждую отдельно.
     function buildExternalSwitcher() {
       const panel = document.querySelector('.control-panel');
       if (!panel) return;
@@ -2437,31 +2593,54 @@
       const networks = Array.from(new Set(clientExternalStations.map(s => s.network_name)));
       if (networks.length === 0) return;
 
-      // По умолчанию — первая сеть из списка.
-      if (!networks.includes(currentExternalNetwork)) {
+      // По умолчанию — режим «Все сети», если их 2+, иначе единственная.
+      if (networks.length > 1) {
+        currentExternalNetwork = '__all__';
+      } else {
         currentExternalNetwork = networks[0];
       }
 
       const div = document.createElement('div');
       div.className = 'external-switcher';
       div.id = 'external-switcher';
-      div.style.display = 'none'; // покажется при переключении на вкладку
+      div.style.display = 'none';
+
+      // Кнопка «Все сети» — только если 2+ сетей.
+      if (networks.length > 1) {
+        const allBtn = document.createElement('button');
+        allBtn.className = 'external-switch-btn active';
+        allBtn.textContent = 'Все сети';
+        allBtn.dataset.net = '__all__';
+        allBtn.onclick = () => {
+          currentExternalNetwork = '__all__';
+          updateExternalSwitcherActive();
+          if (currentView === 'external') drawExternalStations();
+        };
+        div.appendChild(allBtn);
+      }
 
       networks.forEach(name => {
         const btn = document.createElement('button');
-        btn.className = 'external-switch-btn' + (name === currentExternalNetwork ? ' active' : '');
+        btn.className = 'external-switch-btn' +
+          ((currentExternalNetwork === name) ? ' active' : '');
         btn.textContent = name;
+        btn.dataset.net = name;
         btn.onclick = () => {
           currentExternalNetwork = name;
-          document.querySelectorAll('.external-switch-btn').forEach(b => {
-            b.classList.toggle('active', b.textContent === name);
-          });
+          updateExternalSwitcherActive();
           if (currentView === 'external') drawExternalStations();
         };
         div.appendChild(btn);
       });
 
       panel.appendChild(div);
+    }
+
+    // Подсвечивает активную кнопку в переключателе.
+    function updateExternalSwitcherActive() {
+      document.querySelectorAll('.external-switch-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.net === currentExternalNetwork);
+      });
     }
     // Строит переключатель между маршрутами (если их несколько).
     function buildRoutesSwitcher() {
