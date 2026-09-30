@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Обработка Excel для импорта</title>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <style>
+    :root {
+      --bg: #FAF6F1;
+      --surface: #FFFFFF;
+      --border: #E8E1D8;
+      --text: #1F1B16;
+      --text-muted: #78716C;
+      --accent: #E8720C;
+      --success: #16A34A;
+      --danger: #DC2626;
+      --warn: #D97706;
+      --warn-bg: #FEF3E2;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --shadow-soft: 0 2px 8px rgba(31,27,22,0.06);
+      --gradient-accent: linear-gradient(135deg, #F59E0B 0%, #E8720C 100%);
+      --gradient-bg: radial-gradient(circle at 10% 0%, #FEF3E2 0%, transparent 55%),
+                     radial-gradient(circle at 90% 100%, #F0FDF4 0%, transparent 50%),
+                     #FAF6F1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0; padding: 24px;
+      background: var(--gradient-bg);
+      background-attachment: fixed;
+      color: var(--text); min-height: 100vh; line-height: 1.5;
+    }
+    .container {
+      max-width: 860px; margin: 0 auto;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(14px);
+      padding: 28px 32px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(232,225,216,0.8);
+      box-shadow: var(--shadow-soft);
+    }
+    h1 {
+      font-size: 24px; margin: 0 0 8px;
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text; font-weight: 700;
+    }
+    .subtitle { color: var(--text-muted); font-size: 14px; margin: 0 0 20px; }
+    .block {
+      padding: 16px 18px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      margin-bottom: 14px;
+    }
+    .block h3 {
+      margin: 0 0 10px; font-size: 15px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .badge {
+      background: var(--accent); color: #fff;
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 999px;
+    }
+    label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; }
+    input[type="text"] {
+      width: 100%; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-size: 14px; font-family: inherit;
+      background: var(--surface); color: var(--text);
+    }
+    input[type="text"]:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(232,114,12,0.12);
+    }
+    button {
+      padding: 11px 18px;
+      background: var(--gradient-accent); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      cursor: pointer; font-size: 14px; font-weight: 600;
+      font-family: inherit; margin-right: 8px; margin-bottom: 8px;
+      box-shadow: 0 2px 6px rgba(232,114,12,0.25);
+      transition: transform .12s, box-shadow .18s;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(232,114,12,0.32);
+    }
+    button.secondary {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border); box-shadow: none;
+    }
+    button.secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .file-input-wrap {
+      position: relative; display: inline-block;
+    }
+    .file-input-wrap input[type="file"] {
+      position: absolute; left: 0; top: 0; opacity: 0;
+      width: 100%; height: 100%; cursor: pointer;
+    }
+    .file-label {
+      display: inline-block; padding: 12px 20px;
+      background: var(--gradient-accent); color: #fff;
+      border-radius: var(--radius-sm); cursor: pointer;
+      font-size: 14px; font-weight: 600;
+      box-shadow: 0 2px 6px rgba(232,114,12,0.25);
+      transition: transform .12s, box-shadow .18s;
+    }
+    .file-label:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(232,114,12,0.32);
+    }
+    .file-info {
+      margin-top: 10px; font-size: 13px;
+      color: var(--text-muted);
+    }
+    .checkbox-label {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 500; font-size: 13px;
+      cursor: pointer; margin-top: 12px;
+    }
+    .checkbox-label input { margin: 0; accent-color: var(--accent); }
+    .hint {
+      font-size: 12px; color: var(--text-muted);
+      margin-top: 8px; line-height: 1.6;
+    }
+    .hint code {
+      background: var(--warn-bg); padding: 1px 6px;
+      border-radius: 4px; font-size: 11.5px;
+    }
+    .warning-item {
+      padding: 6px 10px; font-size: 12.5px;
+      border-left: 3px solid var(--warn);
+      background: var(--warn-bg);
+      margin-bottom: 4px; border-radius: 4px;
+      color: #92400E;
+    }
+    .warning-item.ok {
+      border-color: var(--success);
+      background: #ECFDF5; color: #065F46;
+    }
+    .download-buttons {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      .container { padding: 18px 14px; }
+      h1 { font-size: 20px; }
+      button, .file-label { font-size: 13px; padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Обработка Excel для импорта</h1>
+    <p class="subtitle">
+      Загрузите исходный Excel — получите 4 готовых файла: КАРТА, ВИП, Платина, Золото.
+      Цены в колонке C пересчитываются по правилам: ВИП (+1/+2), Платина (+2/+3), Золото (+3/+4).
+      Все стили сохраняются.
+    </p>
+
+    <div class="block">
+      <div class="file-input-wrap">
+        <label class="file-label">📁 Выбрать файл Excel</label>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFile(event)">
+      </div>
+      <div class="file-info" id="fileInfo"></div>
+    </div>
+
+    <div class="block" id="nameBlock" style="display:none;">
+      <h3>Имя файлов</h3>
+      <label for="baseName">Базовое имя (без префикса)</label>
+      <input type="text" id="baseName" placeholder="Название_файла">
+      <div class="hint">
+        Будут созданы файлы:<br>
+        <span id="namePreview"></span>
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="skipRowOverride" onchange="revalidate()">
+        <span>Первая строка — служебная (принудительно)</span>
+      </label>
+      <div class="hint">
+        Если не отмечено — первая строка определяется автоматически по заголовкам.
+      </div>
+    </div>
+
+    <div class="block" id="warningsBlock" style="display:none;">
+      <h3>Предупреждения <span class="badge" id="warningsCount">0</span></h3>
+      <div id="warningsList"></div>
+    </div>
+
+    <div class="block" id="downloadBlock" style="display:none;">
+      <h3>Файлы готовы</h3>
+      <div class="download-buttons">
+        <button onclick="downloadFile('karta')">📥 Скачать КАРТА</button>
+        <button onclick="downloadFile('vip')">📥 Скачать ВИП</button>
+        <button onclick="downloadFile('platina')">📥 Скачать Платина</button>
+        <button onclick="downloadFile('zoloto')">📥 Скачать Золото</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // Состояние
+    // ============================================================
+    let sourceBuffer = null;   // ArrayBuffer исходного файла
+    let originalFileName = ''; // оригинальное имя без расширения
+    let dataStartRow = 3;      // номер строки с которой начинаются данные
+
+    // ============================================================
+    // Загрузка файла
+    // ============================================================
+    async function handleFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      originalFileName = file.name.replace(/\.(xlsx|xls)$/i, '');
+      document.getElementById('fileInfo').textContent =
+        `Файл: ${file.name} (${(file.size / 1024).toFixed(1)} КБ)`;
+
+      try {
+        sourceBuffer = await file.arrayBuffer();
+
+        // Определяем служебную строку.
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(sourceBuffer.slice(0));
+        const ws = wb.worksheets[0];
+        if (!ws) {
+          alert('В файле нет листов');
+          return;
+        }
+        dataStartRow = detectDataStartRow(ws);
+
+        // Показываем блок имени.
+        document.getElementById('nameBlock').style.display = 'block';
+        document.getElementById('baseName').value = originalFileName;
+        updateNamePreview();
+
+        // Валидируем.
+        revalidate();
+      } catch (e) {
+        alert('Ошибка чтения файла: ' + e.message);
+        console.error(e);
+      }
+    }
+
+    // ============================================================
+    // Определение стартовой строки данных
+    // ============================================================
+    function detectDataStartRow(ws) {
+      // Принудительный override.
+      if (document.getElementById('skipRowOverride')?.checked) {
+        return 3;
+      }
+
+      const headerWords = ['регион', 'название', 'наименование', 'цена', 'адрес', 'широта', 'долгота'];
+
+      for (let r = 1; r <= 3; r++) {
+        const row = ws.getRow(r);
+        let matches = 0;
+        for (let c = 1; c <= 9; c++) {
+          const v = row.getCell(c).value;
+          if (v && typeof v === 'string') {
+            const lower = v.toLowerCase();
+            if (headerWords.some(w => lower.includes(w))) matches++;
+          }
+        }
+        if (matches >= 3) return r + 1;
+      }
+      // Не определили — по умолчанию 3.
+      return 3;
+    }
+
+    // ============================================================
+    // Обновление превью имени
+    // ============================================================
+    document.getElementById('baseName').addEventListener('input', updateNamePreview);
+
+    function updateNamePreview() {
+      const base = document.getElementById('baseName').value.trim() || 'файл';
+      document.getElementById('namePreview').innerHTML =
+        `<code>КАРТА_${base}.xlsx</code>, <code>ВИП_${base}.xlsx</code>, ` +
+        `<code>Платина_${base}.xlsx</code>, <code>Золото_${base}.xlsx</code>`;
+    }
+
+    // ============================================================
+    // Валидация
+    // ============================================================
+    async function revalidate() {
+      if (!sourceBuffer) return;
+
+      // Заново определяем стартовую строку, если пользователь переключил галочку.
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(sourceBuffer.slice(0));
+      const ws = wb.worksheets[0];
+      dataStartRow = detectDataStartRow(ws);
+
+      const warnings = validate(ws, dataStartRow);
+      showWarnings(warnings);
+
+      document.getElementById('warningsBlock').style.display = 'block';
+      document.getElementById('downloadBlock').style.display = 'block';
+    }
+
+    function validate(ws, startRow) {
+      const warnings = [];
+      for (let i = startRow; i <= ws.rowCount; i++) {
+        const row = ws.getRow(i);
+        const a = row.getCell(1).value;
+        const b = row.getCell(2).value;
+        const c = row.getCell(3).value;
+        const e = row.getCell(5).value;
+        const f = row.getCell(6).value;
+        const g = row.getCell(7).value;
+        const h = row.getCell(8).value;
+        const lon = row.getCell(9).value;
+
+        // Пустая строка — пропускаем.
+        if (isEmpty(a) && isEmpty(b) && isEmpty(c) && isEmpty(e) && isEmpty(f) &&
+            isEmpty(g) && isEmpty(h) && isEmpty(lon)) continue;
+
+        // Левая таблица.
+        if (!isEmpty(b) && (isEmpty(a) || isEmpty(c))) {
+          warnings.push(`Строка ${i}: заполнено название сети «${b}», но пусты регион или цена`);
+        }
+        if (!isEmpty(c)) {
+          const str = String(c).trim();
+          const isNum = typeof c === 'number' || /^[0-9]+([.,][0-9]+)?$/.test(str);
+          if (!isNum) {
+            const parsed = parseDiscountText(str);
+            if (!parsed) {
+              warnings.push(`Строка ${i}: текст в цене не подходит под формат НАЦЕНКА/СКИДКА — «${str}» (скопируется без изменений)`);
+            }
+          }
+        }
+
+        // Правая таблица.
+        if (!isEmpty(f)) {
+          if (isEmpty(e)) warnings.push(`Строка ${i}: у станции «${f}» пуст регион`);
+          if (isEmpty(g)) warnings.push(`Строка ${i}: у станции «${f}» пуст адрес`);
+          if (isEmpty(h)) warnings.push(`Строка ${i}: у станции «${f}» пуста широта`);
+          if (isEmpty(lon)) warnings.push(`Строка ${i}: у станции «${f}» пуста долгота`);
+        }
+
+        // Координаты.
+        if (!isEmpty(h)) {
+          const lat = parseFloat(String(h).replace(',', '.'));
+          if (isNaN(lat) || lat < 41 || lat > 82) {
+            warnings.push(`Строка ${i}: широта «${h}» вне допустимых значений (41…82)`);
+          }
+        }
+        if (!isEmpty(lon)) {
+          const l = parseFloat(String(lon).replace(',', '.'));
+          if (isNaN(l) || l < 19 || l > 180) {
+            warnings.push(`Строка ${i}: долгота «${lon}» вне допустимых значений (19…180)`);
+          }
+        }
+      }
+      return warnings;
+    }
+
+    function isEmpty(v) {
+      return v === null || v === undefined || String(v).trim() === '';
+    }
+
+    function showWarnings(warnings) {
+      const list = document.getElementById('warningsList');
+      const count = document.getElementById('warningsCount');
+      count.textContent = warnings.length;
+
+      if (warnings.length === 0) {
+        list.innerHTML = '<div class="warning-item ok">Ошибок не найдено — файл готов к обработке.</div>';
+        return;
+      }
+      list.innerHTML = warnings.map(w => `<div class="warning-item">${w}</div>`).join('');
+    }
+
+    // ============================================================
+    // Парсинг и сборка текстовых цен
+    // ============================================================
+    function parseDiscountText(text) {
+      if (!text) return null;
+      const str = String(text).trim();
+      const m = str.match(/(НАЦЕНКА|СКИДКА)\s*([+-])\s*(\d+(?:[.,]\d+)?)\s*%/i);
+      if (!m) return null;
+      const word = m[1].toUpperCase();
+      const sign = m[2];
+      const num = parseFloat(m[3].replace(',', '.'));
+      if (!isFinite(num)) return null;
+      if (word === 'НАЦЕНКА' && sign !== '+') return null;
+      if (word === 'СКИДКА' && sign !== '-') return null;
+
+      const matched = m[0];
+      const idx = str.indexOf(matched);
+      const prefix = str.slice(0, idx);
+      const suffix = str.slice(idx + matched.length);
+      return { delta: sign === '-' ? -num : num, prefix, suffix };
+    }
+
+    function formatNumberRu(n) {
+      const rounded = Math.round(n * 100) / 100;
+      if (Number.isInteger(rounded)) return String(rounded);
+      return rounded.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+    }
+
+    function buildDiscountText(delta, prefix, suffix) {
+      if (Math.abs(delta) < 0.0001) return 'ЦЕНА СТЕЛЫ';
+      const sign = delta > 0 ? '+' : '-';
+      const word = delta > 0 ? 'НАЦЕНКА' : 'СКИДКА';
+      const body = `${word} ${sign} ${formatNumberRu(Math.abs(delta))}%`;
+      return `${prefix || ''}${body}${suffix || ''}`;
+    }
+
+    // ============================================================
+    // Пересчёт одного значения
+    // ============================================================
+    function recalcPrice(value, numDelta, textDelta) {
+      if (value === null || value === undefined || value === '') {
+        return { value, changed: false };
+      }
+
+      // Число.
+      if (typeof value === 'number') {
+        const nv = value + numDelta;
+        if (Math.abs(nv) < 0.0001) {
+          return { value: 'ЦЕНА СТЕЛЫ', changed: true, toText: true };
+        }
+        return { value: Math.round(nv * 100) / 100, changed: true };
+      }
+
+      // Текст.
+      const str = String(value).trim();
+
+      // Текст, который является числом ("68.50" или "68,50").
+      if (/^[0-9]+([.,][0-9]+)?$/.test(str)) {
+        const num = parseFloat(str.replace(',', '.'));
+        const nv = num + numDelta;
+        if (Math.abs(nv) < 0.0001) {
+          return { value: 'ЦЕНА СТЕЛЫ', changed: true, toText: true };
+        }
+        const useComma = str.includes(',');
+        const rounded = Math.round(nv * 100) / 100;
+        let out = useComma
+          ? rounded.toFixed(2).replace(/\.?0+$/, '').replace('.', ',')
+          : String(rounded);
+        return { value: out, changed: true };
+      }
+
+      // НАЦЕНКА/СКИДКА.
+      const parsed = parseDiscountText(str);
+      if (parsed) {
+        const newText = buildDiscountText(parsed.delta + textDelta, parsed.prefix, parsed.suffix);
+        return { value: newText, changed: true, toText: true };
+      }
+
+      // Не подходит — копируем как есть.
+      return { value, changed: false };
+    }
+
+    // ============================================================
+    // Генерация файла
+    // ============================================================
+    const FILE_CONFIG = {
+      karta:   { prefix: 'КАРТА',    numDelta: 0, textDelta: 0 },
+      vip:     { prefix: 'ВИП',      numDelta: 1, textDelta: 2 },
+      platina: { prefix: 'Платина',  numDelta: 2, textDelta: 3 },
+      zoloto:  { prefix: 'Золото',   numDelta: 3, textDelta: 4 },
+    };
+
+    async function downloadFile(key) {
+      if (!sourceBuffer) return;
+      const config = FILE_CONFIG[key];
+      if (!config) return;
+
+      const baseName = document.getElementById('baseName').value.trim() || originalFileName;
+
+      try {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(sourceBuffer.slice(0));
+        const ws = wb.worksheets[0];
+
+        // Для КАРТА — просто копия, ничего не пересчитываем.
+        if (config.numDelta !== 0 || config.textDelta !== 0) {
+          for (let i = dataStartRow; i <= ws.rowCount; i++) {
+            const row = ws.getRow(i);
+            const cell = row.getCell(3);
+            if (cell.value === null || cell.value === undefined || cell.value === '') continue;
+
+            const result = recalcPrice(cell.value, config.numDelta, config.textDelta);
+            if (result.changed) {
+              cell.value = result.value;
+              if (result.toText) {
+                cell.numFmt = '@';
+              }
+            }
+          }
+        }
+
+        const buf = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buf], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${config.prefix}_${baseName}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        alert('Ошибка при создании файла: ' + e.message);
+        console.error(e);
+      }
+    }
+  </script>
+</body>
+</html>
