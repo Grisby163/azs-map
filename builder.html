@@ -1670,13 +1670,13 @@
       addRoutePoint(e.latlng);
     });
 
-     function addRoutePoint(latlng) {
+       function addRoutePoint(latlng) {
       // Определяем цвет точки по её роли.
-      const n = routePoints.length;
+      const idx = routePoints.length;
       let color;
-      if (n === 0) color = '#16A34A';       // старт — зелёный
-      else if (n === 1) color = '#DC2626';   // финиш — красный
-      else color = '#E8720C';                // промежуточные — оранжевые
+      if (idx === 0) color = '#16A34A';       // старт — зелёный
+      else if (idx === 1) color = '#DC2626';   // финиш — красный
+      else color = '#E8720C';                  // промежуточные — оранжевые
 
       const marker = L.circleMarker(latlng, {
         radius: 9,
@@ -1697,13 +1697,13 @@
       routePoints.push({ lat: latlng.lat, lng: latlng.lng, marker });
       updateBuildButtonState();
 
-      const n = routePoints.length;
-      if (n === 1) {
+      const total = routePoints.length;
+      if (total === 1) {
         setStatus('Начальная точка задана. Кликните конечную.', '');
-      } else if (n === 2) {
+      } else if (total === 2) {
         setStatus('Конечная точка задана. Нажмите «Построить маршрут».', '');
       } else {
-        setStatus(`Точек: ${n}. Промежуточные будут учтены при построении.`, '');
+        setStatus(`Точек: ${total}. Промежуточные будут учтены при построении.`, '');
       }
     }
     // ============================================================
