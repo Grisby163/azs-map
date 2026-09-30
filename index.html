@@ -1510,13 +1510,13 @@
             popupAnchor: [0, -14]
           });
           marker = L.marker([station.lat, station.lon], { icon }).addTo(markersLayer);
-        } else {
+               } else {
           marker = L.circleMarker([station.lat, station.lon], {
-            radius: 8,
+            radius: 10,
             fillColor: color,
             color: '#fff',
-            weight: 2,
-            fillOpacity: 0.9
+            weight: 2.5,
+            fillOpacity: 0.95
           }).addTo(markersLayer);
         }
 
