@@ -2189,16 +2189,11 @@
       if (!clientRouteGeojson) currentView = 'network';
     }
     // Переключение между вкладками.
-      function switchView(view) {
+         function switchView(view) {
       if (view === currentView) return;
       currentView = view;
 
       // Обновляем активную кнопку.
-      document.querySelectorAll('.view-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.view === view);
-      });
-
-      // Подсвечиваем активную кнопку.
       document.querySelectorAll('.view-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.view === view);
       });
@@ -2226,6 +2221,13 @@
       const extSwitcher = document.getElementById('external-switcher');
       if (extSwitcher) {
         extSwitcher.style.display = (view === 'external') ? 'flex' : 'none';
+      }
+
+      // Рисуем внешние станции при переходе на вкладку «Другая сеть».
+           // Скрываем фильтр топлива на вкладке «Другая сеть».
+      const fuelFilter = document.getElementById('fuel-filter-wrapper');
+      if (fuelFilter) {
+        fuelFilter.style.display = (view === 'external') ? 'none' : '';
       }
 
       // Рисуем внешние станции при переходе на вкладку «Другая сеть».
@@ -2391,17 +2393,11 @@
         externalLayer.addLayer(marker);
       });
 
-      externalLayer.addTo(map);
+         externalLayer.addTo(map);
 
-      // Подгоняем карту под границы видимых станций.
-      try {
-        const bounds = L.latLngBounds(
-          stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon])
-        );
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [40, 40] });
-        }
-      } catch (e) {}
+      // НЕ подгоняем карту под все станции сразу — их тысячи по всей стране.
+      // Показываем текущий вид. Пользователь сам двигает карту и зумит.
+      // Если сейчас карта не настроена (нет границ), оставляем как есть.
     }
 
     function hideExternalStations() {
