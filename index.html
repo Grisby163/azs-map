@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Карта АЗС</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
     /* ============================================================
        Шаг 16.3. Тёплая палитра клиентской карты.
@@ -1035,6 +1037,39 @@
         font-size: 13px;
       }
     }
+          /* ---------- Переключатель внешних сетей ---------- */
+    .external-switcher {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      background: rgba(232, 225, 216, 0.5);
+      border-radius: 999px;
+      justify-content: center;
+      margin-bottom: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      max-width: 100%;
+    }
+    .external-switcher::-webkit-scrollbar { display: none; }
+    .external-switch-btn {
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .18s, color .18s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .external-switch-btn.active {
+      background: var(--gradient-accent);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -1085,6 +1120,7 @@
     <div class="top-networks-row" id="top-networks-row"></div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
@@ -1127,7 +1163,14 @@
     let clientRoutes = [];           // [{ id, name, geojson, radius_km }]
     let activeRouteIndex = 0;        // индекс активного маршрута
     let clientRouteLines = [];       // массив слоёв Leaflet (по одному на маршрут)// слой Leaflet с линией маршрута
-
+    // Внешние сети (Лукойл, Роснефть) — станции без цен.
+    let clientExternalStations = [];
+    let currentExternalNetwork = 'Лукойл'; // активная под-вкладка
+    let externalLayer = null;              // слой с кластеризацией
+    let externalColors = {
+      'Лукойл':   '#DC2626',
+      'Роснефть': '#EAB308',
+    };
     const highwayRoutes = {
       m10: { name: "Москва – Санкт‑Петербург (М10)", coords: [[37.5634,55.7756],[35.9176,56.8587],[34.9604,57.0411],[33.2486,57.9797],[31.2749,58.5228],[30.5043,59.8066]], radius: 5 },
       m4:  { name: "Москва – Краснодар (М4)", coords: [[37.6073,55.5796],[39.1844,51.6720],[39.7187,47.2225],[38.9753,45.0355]], radius: 5 },
@@ -1256,14 +1299,21 @@
       if (price.price_value < avg) return '#43A047'; // зелёный — дешевле среднего
       return '#FF9800'; // оранжевый — средняя и дороже
     }
-        function applyFilters() {
+           function applyFilters() {
+      // На вкладке «Другая сеть» партнёрские станции скрываем полностью.
+      if (currentView === 'external') {
+        markersLayer.clearLayers();
+        document.getElementById('network-panel').style.display = 'none';
+        document.getElementById('best-price-bar').classList.remove('visible');
+        document.getElementById('top-networks-bar').classList.remove('visible');
+        return;
+      }
+
       // Определяем базовый набор станций в зависимости от активной вкладки.
       let baseStations;
       if (clientRouteGeojson && currentView === 'route') {
-        // Вкладка «Мой маршрут» — только станции вдоль маршрута.
         baseStations = stationsOnRoute;
       } else {
-        // Вкладка «Вся сеть» или маршрута нет — все станции.
         baseStations = allStations;
       }
 
@@ -2025,6 +2075,10 @@
           // Новое: читаем маршрут, заголовок и радиус из meta.
                              clientMapTitle = meta.map_title || null;
           clientRadiusKm = meta.radius_km || 5;
+                    // Внешние сети.
+          clientExternalStations = Array.isArray(meta.external_stations)
+            ? meta.external_stations
+            : [];
 
           // Читаем массив маршрутов. Если его нет — берём старое поле
           // route_geojson и превращаем в массив из одного маршрута.
@@ -2051,9 +2105,10 @@
           clientRouteGeojson = clientRoutes.length > 0 ? clientRoutes[0].geojson : null;
           activeRouteIndex = 0;
 
-                    initFuelFilter();
+                          initFuelFilter();
           buildViewTabs();
           buildRoutesSwitcher();
+          buildExternalSwitcher();
           drawClientRoutes();
           computeStationsOnRoute();
           showMapTitle();
@@ -2102,31 +2157,46 @@
     }
 
     // Строит кнопки-вкладки сверху. Показывает их только если есть маршрут.
-    function buildViewTabs() {
+     function buildViewTabs() {
       const panel = document.querySelector('.control-panel');
       if (!panel) return;
 
-      // Убираем старые вкладки, если были.
       const old = document.getElementById('view-tabs');
       if (old) old.remove();
 
-      // Если маршрута нет — вкладки не нужны.
-      if (!clientRouteGeojson) return;
-
+      // Вкладки показываем всегда — как минимум есть «Партнёрская сеть»
+      // и «Другая сеть».
       const div = document.createElement('div');
       div.className = 'view-tabs';
       div.id = 'view-tabs';
-      div.innerHTML = `
-        <button class="view-tab" data-view="network" onclick="switchView('network')">Вся сеть</button>
-        <button class="view-tab active" data-view="route" onclick="switchView('route')">Мой маршрут</button>
-      `;
-      panel.insertBefore(div, panel.firstChild);
-    }
 
+      let html = '';
+      // Вкладка «Мой маршрут» — только если маршрут есть.
+      if (clientRouteGeojson) {
+        html += `<button class="view-tab active" data-view="route" onclick="switchView('route')">Мой маршрут</button>`;
+      }
+      // Вкладка «Партнёрская сеть» — всегда.
+      html += `<button class="view-tab${!clientRouteGeojson ? ' active' : ''}" data-view="network" onclick="switchView('network')">Партнёрская сеть</button>`;
+      // Вкладка «Другая сеть» — всегда, если есть внешние станции.
+      if (clientExternalStations.length > 0) {
+        html += `<button class="view-tab" data-view="external" onclick="switchView('external')">Другая сеть</button>`;
+      }
+
+      div.innerHTML = html;
+      panel.insertBefore(div, panel.firstChild);
+
+      // Подсвечиваем текущий вид по умолчанию.
+      if (!clientRouteGeojson) currentView = 'network';
+    }
     // Переключение между вкладками.
-    function switchView(view) {
+      function switchView(view) {
       if (view === currentView) return;
       currentView = view;
+
+      // Обновляем активную кнопку.
+      document.querySelectorAll('.view-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.view === view);
+      });
 
       // Подсвечиваем активную кнопку.
       document.querySelectorAll('.view-tab').forEach(t => {
@@ -2135,6 +2205,7 @@
 
       // Показываем / скрываем маршрут.
               // Показываем / скрываем маршруты.
+         // Показываем / скрываем маршруты.
       if (view === 'route') {
         clientRouteLines.forEach(line => {
           if (!map.hasLayer(line)) line.addTo(map);
@@ -2151,7 +2222,20 @@
         switcher.style.display = (view === 'route' && clientRoutes.length > 1) ? 'flex' : 'none';
       }
 
-      // Перерисовываем станции.
+      // Показываем / скрываем панель выбора внешней сети.
+      const extSwitcher = document.getElementById('external-switcher');
+      if (extSwitcher) {
+        extSwitcher.style.display = (view === 'external') ? 'flex' : 'none';
+      }
+
+      // Рисуем внешние станции при переходе на вкладку «Другая сеть».
+      if (view === 'external') {
+        drawExternalStations();
+      } else {
+        hideExternalStations();
+      }
+
+      // Перерисовываем станции партнёрской сети.
       applyFilters();
     }
     // Рисует линию маршрута, если он задан в meta.route_geojson.
@@ -2242,7 +2326,147 @@
       const el = document.getElementById('map-title');
       if (el) el.textContent = text;
     }
+        // ============================================================
+    // Внешние сети: отрисовка с кластеризацией
+    // ============================================================
 
+    function drawExternalStations() {
+      hideExternalStations();
+
+      const stations = clientExternalStations.filter(
+        s => s.network_name === currentExternalNetwork
+      );
+      if (stations.length === 0) return;
+
+      // Создаём кластерную группу.
+      externalLayer = L.markerClusterGroup({
+        maxClusterRadius: 60,
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        disableClusteringAtZoom: 14,
+        iconCreateFunction: function (cluster) {
+          const count = cluster.getChildCount();
+          const color = externalColors[currentExternalNetwork] || '#888888';
+          return L.divIcon({
+            html: `<div style="
+              background:${color};
+              color:#fff;
+              width:42px;
+              height:42px;
+              border-radius:50%;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              font-weight:700;
+              font-size:14px;
+              border:3px solid #fff;
+              box-shadow:0 3px 10px rgba(0,0,0,0.25);
+            ">${count}</div>`,
+            className: '',
+            iconSize: [42, 42],
+          });
+        },
+      });
+
+      const color = externalColors[currentExternalNetwork] || '#888888';
+
+      stations.forEach(s => {
+        if (!s.lat || !s.lon) return;
+        const marker = L.circleMarker([s.lat, s.lon], {
+          radius: 6,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 0.9,
+        });
+        const popup = `
+          <b>${s.name || (s.station_number ? 'АЗС №' + s.station_number : 'АЗС')}</b>
+          <div style="font-size:11.5px; color:#666; margin-top:2px;">${currentExternalNetwork}</div>
+          ${s.address ? `<div class="popup-address-row"><span>${s.address}</span>
+            <button class="copy-addr-btn" onclick="copyExternalAddress('${s.id}', this)" title="Скопировать">📋</button>
+          </div>` : ''}
+          ${s.station_number ? `<div style="font-size:12px; color:#888;">№ АЗС: ${s.station_number}</div>` : ''}
+        `;
+        marker.bindPopup(popup);
+        externalLayer.addLayer(marker);
+      });
+
+      externalLayer.addTo(map);
+
+      // Подгоняем карту под границы видимых станций.
+      try {
+        const bounds = L.latLngBounds(
+          stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon])
+        );
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [40, 40] });
+        }
+      } catch (e) {}
+    }
+
+    function hideExternalStations() {
+      if (externalLayer && map.hasLayer(externalLayer)) {
+        map.removeLayer(externalLayer);
+      }
+      externalLayer = null;
+    }
+
+    function copyExternalAddress(id, btnEl) {
+      const s = clientExternalStations.find(x => x.id === id);
+      if (!s || !s.address) return;
+      const text = s.address;
+      const onDone = () => {
+        if (btnEl) {
+          const old = btnEl.textContent;
+          btnEl.textContent = '✓';
+          setTimeout(() => { btnEl.textContent = old; }, 1200);
+        }
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onDone).catch(() => {});
+      }
+    }
+
+    // Строит под-переключатель по внешним сетям.
+    function buildExternalSwitcher() {
+      const panel = document.querySelector('.control-panel');
+      if (!panel) return;
+
+      const old = document.getElementById('external-switcher');
+      if (old) old.remove();
+
+      if (clientExternalStations.length === 0) return;
+
+      // Уникальные сети из данных.
+      const networks = Array.from(new Set(clientExternalStations.map(s => s.network_name)));
+      if (networks.length === 0) return;
+
+      // По умолчанию — первая сеть из списка.
+      if (!networks.includes(currentExternalNetwork)) {
+        currentExternalNetwork = networks[0];
+      }
+
+      const div = document.createElement('div');
+      div.className = 'external-switcher';
+      div.id = 'external-switcher';
+      div.style.display = 'none'; // покажется при переключении на вкладку
+
+      networks.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'external-switch-btn' + (name === currentExternalNetwork ? ' active' : '');
+        btn.textContent = name;
+        btn.onclick = () => {
+          currentExternalNetwork = name;
+          document.querySelectorAll('.external-switch-btn').forEach(b => {
+            b.classList.toggle('active', b.textContent === name);
+          });
+          if (currentView === 'external') drawExternalStations();
+        };
+        div.appendChild(btn);
+      });
+
+      panel.appendChild(div);
+    }
     // Строит переключатель между маршрутами (если их несколько).
     function buildRoutesSwitcher() {
       const panel = document.querySelector('.control-panel');
