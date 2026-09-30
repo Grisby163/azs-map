@@ -1164,8 +1164,8 @@
     }
 
     // Подключает обработчики, чтобы любое изменение формы сохраняло черновик.
-    function hookDraftAutosave() {
-           const ids = [
+      function hookDraftAutosave() {
+      const ids = [
         'clientName', 'mapTitle', 'priceListSelect', 'areaSelect',
         'showGreeting', 'radiusKm', 'excludeToll', 'cityFrom', 'cityTo',
         'ttlDays'
@@ -1176,22 +1176,23 @@
         el.addEventListener('input', scheduleDraftSave);
         el.addEventListener('change', scheduleDraftSave);
       });
-    // Обработчик галочки «Показывать другие сети».
-    (function hookExternalNetworksToggle() {
-      document.addEventListener('DOMContentLoaded', () => {
-        const cb = document.getElementById('showExternalNetworks');
-        if (cb) {
-          cb.addEventListener('change', () => {
-            updateExternalNetworksVisibility();
-            scheduleDraftSave();
-          });
-        }
-        updateExternalNetworksVisibility();
-      });
-    })();
+
+      // Обработчик галочки «Показывать другие сети».
+      const extCb = document.getElementById('showExternalNetworks');
+      if (extCb) {
+        extCb.addEventListener('change', () => {
+          updateExternalNetworksVisibility();
+          scheduleDraftSave();
+        });
+      }
+      updateExternalNetworksVisibility();
+
       // Чекбоксы сетей — через делегирование.
       document.addEventListener('change', (e) => {
         if (e.target.classList && e.target.classList.contains('network-checkbox')) {
+          scheduleDraftSave();
+        }
+        if (e.target.classList && e.target.classList.contains('external-network-checkbox')) {
           scheduleDraftSave();
         }
       });
@@ -2483,8 +2484,8 @@
         const showExternal = document.getElementById('showExternalNetworks')?.checked !== false;
         const selectedExternalNetworks = showExternal ? getSelectedExternalNetworks() : [];
 
-        const payload = {
-          client_name: clientName,
+               const payload = {
+          client_name: '[Предпросмотр] ' + clientName,
           price_list_id: priceListId,
           area: area,
           show_greeting: showGreeting,
@@ -2494,7 +2495,8 @@
           map_title: mapTitle || null,
           map_settings: {},
           routes: routesToSend,
-          ttl_days: validTtlDays,
+          // Предпросмотр живёт 10 минут.
+          ttl_minutes: 10,
           // Внешние сети.
           show_external: showExternal,
           external_networks: selectedExternalNetworks
