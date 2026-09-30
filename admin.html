@@ -787,9 +787,10 @@ async function updateNetwork(id, field, value) {
             }
           }
 
-          // Кнопки действий.
+                   // Кнопки действий.
+          const clientName = t.client_name || 'без имени';
           const actions =
-            `<button onclick="duplicateCard('${t.token}')" class="secondary" style="font-size:11px; padding:3px 8px;">Дублировать</button>`;
+            `<button onclick="deleteCard('${t.token}', '${clientName.replace(/'/g, "\\'")}')" class="secondary" style="font-size:11px; padding:3px 8px; color:#DC2626; border-color:#DC2626;">Удалить</button>`;
 
           html += `<tr>
             <td>${t.client_name || ''}</td>
@@ -1217,13 +1218,32 @@ async function savePrice(stationId) {
      // ============================================================
     // Шаг 15. Аналитика. Заглушка для дублирования (шаг 13).
     // ============================================================
-            function duplicateCard(token) {
-      const url = `${window.location.origin}/builder.html?from_token=${encodeURIComponent(token)}`;
-      const w = window.open(url, '_blank');
-      // Opera и другие браузеры могут блокировать попапы.
-      // Если попап не открылся — переходим в текущей вкладке.
-      if (!w || w.closed || typeof w.closed === 'undefined') {
-        window.location.href = url;
+            // Удаляет карту клиента.
+    async function deleteCard(token, clientName) {
+      const name = clientName || 'без имени';
+      if (!confirm(`Удалить карту для клиента «${name}»?\n\nСсылка перестанет работать. Это действие необратимо.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-delete-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': adminKey
+          },
+          body: JSON.stringify({ token })
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Не удалось удалить');
+        }
+
+        alert(`Карта для клиента «${name}» удалена.`);
+        loadTokens();
+      } catch (e) {
+        alert('Ошибка удаления: ' + e.message);
       }
     }
         // ============================================================
