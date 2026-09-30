@@ -479,10 +479,10 @@
          <div id="import" class="tab-content">
         <h2>Импорт из Excel</h2>
 
-        <div class="import-subtabs">
-          <button class="import-subtab active" onclick="switchImportTab('partner')">Партнёрская сеть</button>
-          <button class="import-subtab" onclick="switchImportTab('lukoil')">Лукойл</button>
-          <button class="import-subtab" onclick="switchImportTab('rosneft')">Роснефть</button>
+              <div class="import-subtabs">
+          <button class="import-subtab active" onclick="switchImportTab('partner', this)">Партнёрская сеть</button>
+          <button class="import-subtab" onclick="switchImportTab('lukoil', this)">Лукойл</button>
+          <button class="import-subtab" onclick="switchImportTab('rosneft', this)">Роснефть</button>
         </div>
 
         <div id="import-partner" class="import-section active">
@@ -1230,12 +1230,6 @@ async function savePrice(stationId) {
     // Импорт внешних сетей: Лукойл, Роснефть
     // ============================================================
 
-    function switchImportTab(name) {
-      document.querySelectorAll('.import-subtab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById('import-' + name).classList.add('active');
-    }
 
     // ---------- Лукойл ----------
     function handleLukoilUpload(event) {
@@ -1263,43 +1257,49 @@ async function savePrice(stationId) {
       reader.readAsArrayBuffer(file);
     }
 
-    function parseLukoilRows(rows) {
-      // Ищем заголовочную строку — там, где есть "АЗС №" или "АЗС".
+       function parseLukoilRows(rows) {
+      // 1. Ищем первую строку, где в какой-либо колонке есть "АЗС №".
       let headerRowIdx = -1;
-      let subHeaderRowIdx = -1;
-
       for (let i = 0; i < Math.min(20, rows.length); i++) {
         const row = rows[i] || [];
         const rowStr = row.map(c => String(c || '').toLowerCase()).join('|');
-        if (headerRowIdx === -1 && (rowStr.includes('азс №') || rowStr.includes('азс n'))) {
+        if (rowStr.includes('азс №') || rowStr.includes('азс n')) {
           headerRowIdx = i;
-        }
-        if (rowStr.includes('широта') || rowStr.includes('долгота')) {
-          subHeaderRowIdx = i;
           break;
         }
       }
-
       if (headerRowIdx === -1) return [];
 
-      // Строим карту колонок: для каждой колонки — её название.
+      // 2. Собираем карту колонок из нескольких строк,
+      // приоритет — конкретным названиям ("широта", "долгота")
+      // над общими ("координаты gps").
       const colMap = {};
-      const headerRow = rows[headerRowIdx] || [];
-      headerRow.forEach((h, idx) => {
-        if (h) colMap[idx] = String(h).toLowerCase().trim();
-      });
-      // Дополняем из суб-заголовков (объединённые ячейки).
-      if (subHeaderRowIdx !== -1) {
-        const subRow = rows[subHeaderRowIdx] || [];
-        subRow.forEach((h, idx) => {
-          if (h && !colMap[idx]) colMap[idx] = String(h).toLowerCase().trim();
+      const priority = (name) => {
+        if (name.includes('широта') || name.includes('долгота')) return 3;
+        if (name === 'азс №' || name === 'адрес азс' || name === 'регион') return 3;
+        if (name.includes('координаты')) return 1;
+        return 2;
+      };
+
+      for (let i = headerRowIdx; i < Math.min(headerRowIdx + 6, rows.length); i++) {
+        const row = rows[i] || [];
+        row.forEach((cell, idx) => {
+          if (cell === null || cell === undefined) return;
+          const s = String(cell).trim();
+          if (!s || s.length > 100) return;
+          const lower = s.toLowerCase();
+          const p = priority(lower);
+          if (!colMap[idx] || colMap[idx].priority < p) {
+            colMap[idx] = { name: lower, priority: p };
+          }
         });
       }
 
-      // Ищем индексы нужных колонок.
+      // 3. Ищем индексы нужных колонок.
       let idxStationNum = -1, idxAddress = -1, idxRegion = -1, idxLat = -1, idxLon = -1;
-      for (const [i, name] of Object.entries(colMap)) {
+      for (const [i, entry] of Object.entries(colMap)) {
         const idx = parseInt(i, 10);
+        const name = entry.name;
         if (idxStationNum === -1 && (name === 'азс №' || name.startsWith('азс №'))) idxStationNum = idx;
         if (idxAddress === -1 && name.includes('адрес азс')) idxAddress = idx;
         if (idxRegion === -1 && name === 'регион') idxRegion = idx;
@@ -1309,9 +1309,24 @@ async function savePrice(stationId) {
 
       if (idxStationNum === -1 || idxAddress === -1) return [];
 
-      // Данные начинаются со строки после суб-заголовков (или после заголовков).
-      const dataStart = Math.max(headerRowIdx, subHeaderRowIdx) + 1;
+      // 4. Определяем начало данных: первая строка, где в колонке
+      // idxStationNum стоит число.
+      let dataStart = -1;
+      for (let i = headerRowIdx; i < rows.length; i++) {
+        const row = rows[i] || [];
+        const v = String(row[idxStationNum] || '').trim();
+        if (/^\d+$/.test(v)) {
+          dataStart = i;
+          break;
+        }
+      }
+      if (dataStart === -1) return [];
 
+      // 5. Диагностика в консоль.
+      console.log('[Лукойл] headerRow:', headerRowIdx, 'dataStart:', dataStart);
+      console.log('[Лукойл] колонки:', { idxStationNum, idxAddress, idxRegion, idxLat, idxLon });
+
+      // 6. Читаем станции.
       const stations = [];
       for (let i = dataStart; i < rows.length; i++) {
         const row = rows[i] || [];
@@ -1331,7 +1346,6 @@ async function savePrice(stationId) {
       }
       return stations;
     }
-
     // ---------- Роснефть ----------
     function handleRosneftUpload(event) {
       const file = event.target.files[0];
