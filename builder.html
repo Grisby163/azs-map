@@ -770,14 +770,18 @@
             </label>
           </div>
 
-          <!-- Расстановка точек -->
+               <!-- Расстановка точек -->
           <div style="margin-bottom:8px;">
             <button onclick="togglePointMode()" id="pointModeBtn" class="secondary" style="width:100%;">
               ▶ Включить расстановку точек
             </button>
           </div>
+          <div style="margin-bottom:8px;">
+            <button onclick="armIntermediatePoint()" id="intermediatePointBtn" class="secondary" style="width:100%;">
+              📍 Поставить промежуточную точку
+            </button>
+          </div>
           <div id="pointModeInfo" style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;"></div>
-
           <!-- Построить / Сбросить -->
           <div style="display:flex; gap:6px;">
             <button onclick="buildRoute()" id="buildRouteBtn" style="flex:1;" disabled>Построить маршрут</button>
@@ -1595,9 +1599,12 @@
     // Заполняется при загрузке цен для выбранного листа.
     let pricesCache = {};
 
-      // ---------- Режим расстановки точек ----------
+       // ---------- Режим расстановки точек ----------
     // По умолчанию выключен. Клики по карте добавляют точки только когда включён.
     let pointMode = false;
+
+    // Режим одной промежуточной точки: клик по карте ставит одну точку, режим выключается.
+    let intermediateArmed = false;
 
     function togglePointMode() {
       pointMode = !pointMode;
@@ -1615,27 +1622,67 @@
         setStatus('Режим расстановки точек выключен.', '');
       }
     }
+    // Включает режим одной промежуточной точки.
+    // Следующий клик по карте поставит точку и выключит режим.
+    function armIntermediatePoint() {
+      // Если включён обычный режим расстановки — выключаем его.
+      if (pointMode) {
+        pointMode = false;
+        const btn = document.getElementById('pointModeBtn');
+        if (btn) {
+          btn.textContent = '▶ Включить расстановку точек';
+          btn.style.background = '#607D8B';
+        }
+      }
 
-    // ---------- Клики по карте ----------
+      intermediateArmed = true;
+      const info = document.getElementById('pointModeInfo');
+      if (info) {
+        info.textContent = 'Кликните на карте, чтобы поставить промежуточную точку.';
+      }
+      const btn2 = document.getElementById('intermediatePointBtn');
+      if (btn2) btn2.style.background = '#E8720C';
+      setStatus('Кликните на карте, чтобы поставить промежуточную точку.', '');
+    }
+      // ---------- Клики по карте ----------
     map.on('click', function (e) {
       // Если ключ не введён — игнорируем.
       if (!adminKey || document.getElementById('authSection').style.display === 'none') {
         return;
       }
-      // Если режим расстановки выключен — игнорируем.
+
+      // Режим одной промежуточной точки.
+      if (intermediateArmed) {
+        addRoutePoint(e.latlng);
+        intermediateArmed = false;
+        const btn2 = document.getElementById('intermediatePointBtn');
+        if (btn2) btn2.style.background = '#607D8B';
+        const info = document.getElementById('pointModeInfo');
+        if (info) info.textContent = '';
+        setStatus('Промежуточная точка добавлена. Можно поставить ещё одну или построить маршрут.', '');
+        return;
+      }
+
+      // Обычный режим расстановки.
       if (!pointMode) {
         return;
       }
       addRoutePoint(e.latlng);
     });
 
-    function addRoutePoint(latlng) {
-      // Рисуем круглую точку-маркер на карте.
+     function addRoutePoint(latlng) {
+      // Определяем цвет точки по её роли.
+      const n = routePoints.length;
+      let color;
+      if (n === 0) color = '#16A34A';       // старт — зелёный
+      else if (n === 1) color = '#DC2626';   // финиш — красный
+      else color = '#E8720C';                // промежуточные — оранжевые
+
       const marker = L.circleMarker(latlng, {
-        radius: 7,
-        fillColor: '#1565C0',
+        radius: 9,
+        fillColor: color,
         color: '#fff',
-        weight: 2,
+        weight: 2.5,
         fillOpacity: 1
       }).addTo(map);
 
@@ -1831,8 +1878,14 @@
       routeGeojson = null;
       stationsOnRoute = [];
       if (routeLineLayer) { map.removeLayer(routeLineLayer); routeLineLayer = null; }
-      document.getElementById('routeInfo').textContent = '';
+          document.getElementById('routeInfo').textContent = '';
       document.getElementById('pointModeInfo').textContent = '';
+      // Сбрасываем режим промежуточной точки, если был активен.
+      if (intermediateArmed) {
+        intermediateArmed = false;
+        const btn2 = document.getElementById('intermediatePointBtn');
+        if (btn2) btn2.style.background = '#607D8B';
+      }
       drawStations(allStations);
       updateBuildButtonState();
       setStatus('Точки маршрута сброшены.', '');
@@ -1848,8 +1901,20 @@
       setStatus('Построение маршрута...', '');
       document.getElementById('buildRouteBtn').disabled = true;
 
-            try {
-        const coordinates = routePoints.map(p => [p.lng, p.lat]);
+              try {
+        // Переставляем точки: старт → промежуточные (в порядке добавления) → финиш.
+        // Первые две точки — старт и финиш. Всё, что после, — промежуточные.
+        let orderedPoints;
+        if (routePoints.length >= 2) {
+          const start = routePoints[0];
+          const finish = routePoints[1];
+          const intermediates = routePoints.slice(2);
+          orderedPoints = [start, ...intermediates, finish];
+        } else {
+          orderedPoints = routePoints;
+        }
+
+        const coordinates = orderedPoints.map(p => [p.lng, p.lat]);
 
         const response = await fetch(`${ADMIN_BASE_URL}/admin-build-route`, {
           method: 'POST',
@@ -1953,17 +2018,29 @@
 
         setStatus(`Найдено: ${fromPoint.displayName} → ${toPoint.displayName}`, '');
 
-        // 2. Очищаем текущие точки маршрута.
+             // 2. Сохраняем промежуточные точки, если они были — они станут между
+        //    новыми стартом и финишем.
+        const savedIntermediate = routePoints.slice(2).map(p => ({
+          lat: p.lat,
+          lng: p.lng
+        }));
+
+        // 3. Очищаем текущие точки маршрута.
         clearRoutePoints();
 
-        // 3. Добавляем точки на карту.
+        // 4. Добавляем старт и финиш.
         addRoutePoint(L.latLng(fromPoint.lat, fromPoint.lon));
         addRoutePoint(L.latLng(toPoint.lat, toPoint.lon));
 
-        // 4. Небольшая пауза, чтобы точки отрисовались.
+        // 5. Возвращаем промежуточные точки.
+        savedIntermediate.forEach(p => {
+          addRoutePoint(L.latLng(p.lat, p.lng));
+        });
+
+        // 6. Небольшая пауза, чтобы точки отрисовались.
         await new Promise(r => setTimeout(r, 100));
 
-        // 5. Строим маршрут.
+        // 7. Строим маршрут.
         await buildRoute();
 
       } catch (e) {
