@@ -371,6 +371,45 @@
       .header-row { flex-direction: column; align-items: stretch; }
       .builder-btn { width: 100%; }
     }
+          /* ---------- Под-вкладки импорта ---------- */
+    .import-subtabs {
+      display: flex;
+      gap: 6px;
+      padding: 4px;
+      background: rgba(232, 225, 216, 0.4);
+      border-radius: var(--radius-md);
+      margin-bottom: 18px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .import-subtabs::-webkit-scrollbar { display: none; }
+    .import-subtab {
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .18s, color .18s;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-shadow: none;
+    }
+    .import-subtab:hover {
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--text);
+      transform: none;
+    }
+    .import-subtab.active {
+      background: var(--gradient-accent);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.28);
+    }
+    .import-section { display: none; }
+    .import-section.active { display: block; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -437,8 +476,16 @@
       </div>
 
 
-      <div id="import" class="tab-content">
+         <div id="import" class="tab-content">
         <h2>Импорт из Excel</h2>
+
+        <div class="import-subtabs">
+          <button class="import-subtab active" onclick="switchImportTab('partner')">Партнёрская сеть</button>
+          <button class="import-subtab" onclick="switchImportTab('lukoil')">Лукойл</button>
+          <button class="import-subtab" onclick="switchImportTab('rosneft')">Роснефть</button>
+        </div>
+
+        <div id="import-partner" class="import-section active">
                 <div style="padding:12px 14px; background:var(--warn-bg); border:1px solid #FDE68A; border-radius:var(--radius-sm); margin-bottom:14px; font-size:12.5px; line-height:1.6; color:#92400E;">
           <b>Формат текстовых цен в колонке C:</b><br>
           • Наценка: <code style="background:#fff; padding:1px 6px; border-radius:4px;">НАЦЕНКА +1,5%</code><br>
@@ -448,11 +495,34 @@
         </div>
         <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
         <div id="importStatus"></div>
-        <div id="mappingSection" style="display:none;">
+              <div id="mappingSection" style="display:none;">
           <h3>Несопоставленные станции</h3>
           <p>Для каждой станции укажите сеть из списка или создайте новую.</p>
           <div id="unmatchedStations"></div>
           <button onclick="submitImport()">Отправить импорт</button>
+        </div>
+        </div>
+
+        <div id="import-lukoil" class="import-section">
+          <div style="padding:12px 14px; background:var(--warn-bg); border:1px solid #FDE68A; border-radius:var(--radius-sm); margin-bottom:14px; font-size:12.5px; line-height:1.6; color:#92400E;">
+            <b>Формат файла Лукойла (ЛИКАРД-Процессинг):</b><br>
+            Импортируются колонки: <code>АЗС №</code>, <code>Адрес АЗС</code>, <code>Регион</code>, <code>Широта</code>, <code>Долгота</code>.<br>
+            Заголовки могут быть многоуровневыми — парсер найдёт нужные колонки автоматически.<br>
+            <b>Импорт заменяет все станции Лукойла.</b>
+          </div>
+          <input type="file" id="lukoilFile" accept=".xlsx, .xls" onchange="handleLukoilUpload(event)">
+          <div id="lukoilStatus"></div>
+        </div>
+
+        <div id="import-rosneft" class="import-section">
+          <div style="padding:12px 14px; background:var(--warn-bg); border:1px solid #FDE68A; border-radius:var(--radius-sm); margin-bottom:14px; font-size:12.5px; line-height:1.6; color:#92400E;">
+            <b>Формат файла Роснефти («Выгодный транзит»):</b><br>
+            Импортируются колонки: <code>Точка обслуживания</code>, <code>Адрес ТО</code>, <code>Долгота</code>, <code>Широта</code>.<br>
+            Обратите внимание: сначала долгота, потом широта.<br>
+            <b>Импорт заменяет все станции Роснефти.</b>
+          </div>
+          <input type="file" id="rosneftFile" accept=".xlsx, .xls" onchange="handleRosneftUpload(event)">
+          <div id="rosneftStatus"></div>
         </div>
       </div>
             <div id="clear" class="tab-content">
@@ -1155,6 +1225,218 @@ async function savePrice(stationId) {
       if (!w || w.closed || typeof w.closed === 'undefined') {
         window.location.href = url;
       }
+    }
+        // ============================================================
+    // Импорт внешних сетей: Лукойл, Роснефть
+    // ============================================================
+
+    function switchImportTab(name) {
+      document.querySelectorAll('.import-subtab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('import-' + name).classList.add('active');
+    }
+
+    // ---------- Лукойл ----------
+    function handleLukoilUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          const stations = parseLukoilRows(rows);
+          if (stations.length === 0) {
+            document.getElementById('lukoilStatus').innerHTML =
+              '<p style="color:red;">Не удалось найти станции. Проверьте формат файла.</p>';
+            return;
+          }
+          submitExternalImport('Лукойл', stations);
+        } catch (err) {
+          document.getElementById('lukoilStatus').innerHTML =
+            '<p style="color:red;">Ошибка чтения: ' + err.message + '</p>';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseLukoilRows(rows) {
+      // Ищем заголовочную строку — там, где есть "АЗС №" или "АЗС".
+      let headerRowIdx = -1;
+      let subHeaderRowIdx = -1;
+
+      for (let i = 0; i < Math.min(20, rows.length); i++) {
+        const row = rows[i] || [];
+        const rowStr = row.map(c => String(c || '').toLowerCase()).join('|');
+        if (headerRowIdx === -1 && (rowStr.includes('азс №') || rowStr.includes('азс n'))) {
+          headerRowIdx = i;
+        }
+        if (rowStr.includes('широта') || rowStr.includes('долгота')) {
+          subHeaderRowIdx = i;
+          break;
+        }
+      }
+
+      if (headerRowIdx === -1) return [];
+
+      // Строим карту колонок: для каждой колонки — её название.
+      const colMap = {};
+      const headerRow = rows[headerRowIdx] || [];
+      headerRow.forEach((h, idx) => {
+        if (h) colMap[idx] = String(h).toLowerCase().trim();
+      });
+      // Дополняем из суб-заголовков (объединённые ячейки).
+      if (subHeaderRowIdx !== -1) {
+        const subRow = rows[subHeaderRowIdx] || [];
+        subRow.forEach((h, idx) => {
+          if (h && !colMap[idx]) colMap[idx] = String(h).toLowerCase().trim();
+        });
+      }
+
+      // Ищем индексы нужных колонок.
+      let idxStationNum = -1, idxAddress = -1, idxRegion = -1, idxLat = -1, idxLon = -1;
+      for (const [i, name] of Object.entries(colMap)) {
+        const idx = parseInt(i, 10);
+        if (idxStationNum === -1 && (name === 'азс №' || name.startsWith('азс №'))) idxStationNum = idx;
+        if (idxAddress === -1 && name.includes('адрес азс')) idxAddress = idx;
+        if (idxRegion === -1 && name === 'регион') idxRegion = idx;
+        if (idxLat === -1 && name.includes('широта')) idxLat = idx;
+        if (idxLon === -1 && name.includes('долгота')) idxLon = idx;
+      }
+
+      if (idxStationNum === -1 || idxAddress === -1) return [];
+
+      // Данные начинаются со строки после суб-заголовков (или после заголовков).
+      const dataStart = Math.max(headerRowIdx, subHeaderRowIdx) + 1;
+
+      const stations = [];
+      for (let i = dataStart; i < rows.length; i++) {
+        const row = rows[i] || [];
+        const stationNum = String(row[idxStationNum] || '').trim();
+        const address = String(row[idxAddress] || '').trim();
+        if (!stationNum && !address) continue;
+        if (!address) continue;
+
+        stations.push({
+          station_number: stationNum,
+          name: `АЗС №${stationNum} ЛУКОЙЛ`,
+          address: address,
+          region: idxRegion !== -1 ? String(row[idxRegion] || '').trim() : '',
+          lat: idxLat !== -1 ? row[idxLat] : '',
+          lon: idxLon !== -1 ? row[idxLon] : '',
+        });
+      }
+      return stations;
+    }
+
+    // ---------- Роснефть ----------
+    function handleRosneftUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          const stations = parseRosneftRows(rows);
+          if (stations.length === 0) {
+            document.getElementById('rosneftStatus').innerHTML =
+              '<p style="color:red;">Не удалось найти станции. Проверьте формат файла.</p>';
+            return;
+          }
+          submitExternalImport('Роснефть', stations);
+        } catch (err) {
+          document.getElementById('rosneftStatus').innerHTML =
+            '<p style="color:red;">Ошибка чтения: ' + err.message + '</p>';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseRosneftRows(rows) {
+      // Ищем заголовочную строку — там, где есть "Точка обслуживания" или "Адрес ТО".
+      let headerRowIdx = -1;
+      for (let i = 0; i < Math.min(10, rows.length); i++) {
+        const row = rows[i] || [];
+        const rowStr = row.map(c => String(c || '').toLowerCase()).join('|');
+        if (rowStr.includes('точка обслуживания') || rowStr.includes('адрес то')) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+      if (headerRowIdx === -1) return [];
+
+      const headerRow = rows[headerRowIdx] || [];
+      let idxName = -1, idxAddress = -1, idxLon = -1, idxLat = -1;
+      headerRow.forEach((h, i) => {
+        const name = String(h || '').toLowerCase().trim();
+        if (idxName === -1 && name.includes('точка обслуживания')) idxName = i;
+        if (idxAddress === -1 && name.includes('адрес')) idxAddress = i;
+        if (idxLon === -1 && name.includes('долгота')) idxLon = i;
+        if (idxLat === -1 && name.includes('широта')) idxLat = i;
+      });
+
+      if (idxName === -1 || idxLon === -1 || idxLat === -1) return [];
+
+      const stations = [];
+      for (let i = headerRowIdx + 1; i < rows.length; i++) {
+        const row = rows[i] || [];
+        const name = String(row[idxName] || '').trim();
+        if (!name) continue;
+
+        stations.push({
+          name: name,
+          address: idxAddress !== -1 ? String(row[idxAddress] || '').trim() : '',
+          lon: row[idxLon],
+          lat: row[idxLat],
+        });
+      }
+      return stations;
+    }
+
+    // ---------- Отправка на сервер ----------
+    function submitExternalImport(network, stations) {
+      const statusId = network === 'Лукойл' ? 'lukoilStatus' : 'rosneftStatus';
+      const statusDiv = document.getElementById(statusId);
+      statusDiv.innerHTML = `<p>Отправка на сервер... Найдено станций: ${stations.length}</p>`;
+
+      fetch(`${ADMIN_BASE_URL}/admin-import-external`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminKey
+        },
+        body: JSON.stringify({ network, stations })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          statusDiv.innerHTML = `<p style="color:red;">Ошибка: ${data.error}</p>`;
+        } else {
+          statusDiv.innerHTML =
+            `<p style="color:green;">Импорт завершён. Загружено станций: ${data.processedStations}` +
+            (data.skipped ? `, пропущено (без координат): ${data.skipped}` : '') +
+            `</p>`;
+        }
+      })
+      .catch(err => {
+        statusDiv.innerHTML = `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
+      });
+    }
+        // ============================================================
+    // Переключатель под-вкладок импорта
+    // ============================================================
+
+    function switchImportTab(name, btn) {
+      document.querySelectorAll('.import-subtab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      document.getElementById('import-' + name).classList.add('active');
     }
   </script>
 </body>
