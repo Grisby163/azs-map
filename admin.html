@@ -410,6 +410,22 @@
     }
     .import-section { display: none; }
     .import-section.active { display: block; }
+          /* ---------- Убираем выделение текста в интерфейсе ---------- */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    /* Разрешаем выделение там, где оно нужно */
+    input, textarea, select, code, pre,
+    .tech-details, #techDetails, #result, #createResult,
+    #tokensTable a, #tokensTable td[style*="monospace"] {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
