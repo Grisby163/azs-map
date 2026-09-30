@@ -147,6 +147,19 @@
       h1 { font-size: 20px; }
       button, .file-label { font-size: 13px; padding: 10px 14px; }
     }
+        /* ---------- Убираем выделение текста в интерфейсе ---------- */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    input, textarea, code {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
   </style>
 </head>
 <body>
