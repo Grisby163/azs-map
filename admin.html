@@ -1372,7 +1372,7 @@ async function savePrice(stationId) {
       reader.readAsArrayBuffer(file);
     }
 
-    function parseRosneftRows(rows) {
+      function parseRosneftRows(rows) {
       // Ищем заголовочную строку — там, где есть "Точка обслуживания" или "Адрес ТО".
       let headerRowIdx = -1;
       for (let i = 0; i < Math.min(10, rows.length); i++) {
@@ -1400,11 +1400,15 @@ async function savePrice(stationId) {
       const stations = [];
       for (let i = headerRowIdx + 1; i < rows.length; i++) {
         const row = rows[i] || [];
-        const name = String(row[idxName] || '').trim();
-        if (!name) continue;
+        const rawName = String(row[idxName] || '').trim();
+        if (!rawName) continue;
+
+        // Убираем служебный код в квадратных скобках в начале названия.
+        // Например: "[426,1,213] АЗК №3108 РОСНЕФТЬ НПО" → "АЗК №3108 РОСНЕФТЬ НПО"
+        const name = rawName.replace(/^\s*\[[^\]]*\]\s*/, '').trim();
 
         stations.push({
-          name: name,
+          name: name || rawName, // если после очистки пусто — оставляем исходное
           address: idxAddress !== -1 ? String(row[idxAddress] || '').trim() : '',
           lon: row[idxLon],
           lat: row[idxLat],
