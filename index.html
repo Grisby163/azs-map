@@ -2293,14 +2293,13 @@
         extSwitcher.style.display = (view === 'external') ? 'flex' : 'none';
       }
 
-      // Рисуем внешние станции при переходе на вкладку «Другая сеть».
-           // Скрываем фильтр топлива на вкладке «Другая сеть».
+         // Скрываем фильтр топлива на вкладке «Другая сеть».
       const fuelFilter = document.getElementById('fuel-filter-wrapper');
       if (fuelFilter) {
         fuelFilter.style.display = (view === 'external') ? 'none' : '';
       }
 
-         // Рисуем внешние станции при переходе на вкладку «Другая сеть».
+      // Рисуем внешние станции при переходе на вкладку «Другая сеть».
       if (view === 'external') {
         drawExternalStations();
       } else {
@@ -2482,12 +2481,7 @@
         externalLayer.addLayer(marker);
       });
 
-      externalLayer.addTo(map);
-    }
-
-      // НЕ подгоняем карту под все станции сразу — их тысячи по всей стране.
-      // Показываем текущий вид. Пользователь сам двигает карту и зумит.
-      // Если сейчас карта не настроена (нет границ), оставляем как есть.
+         externalLayer.addTo(map);
     }
 
     function hideExternalStations() {
