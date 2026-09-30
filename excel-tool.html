@@ -382,10 +382,9 @@
     // ============================================================
     // Парсинг и сборка текстовых цен
     // ============================================================
-      function parseDiscountText(text) {
+        function parseDiscountText(text) {
       if (!text) return null;
       const str = String(text).trim();
-      // Знак опционален.
       const m = str.match(/(НАЦЕНКА|СКИДКА)\s*([+-])?\s*(\d+(?:[.,]\d+)?)\s*%/i);
       if (!m) return null;
       const word = m[1].toUpperCase();
@@ -406,25 +405,26 @@
       const matched = m[0];
       const idx = str.indexOf(matched);
       const prefix = str.slice(0, idx);
-      const suffix = str.slice(idx + matched.length);
-      return { delta, prefix, suffix, hasSign };
+      return { delta, prefix, hasSign };
     }
 
+        // Всегда два знака после запятой, разделитель — запятая.
     function formatNumberRu(n) {
-      const rounded = Math.round(n * 100) / 100;
-      if (Number.isInteger(rounded)) return String(rounded);
-      return rounded.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+      return n.toFixed(2).replace('.', ',');
     }
 
-       function buildDiscountText(delta, prefix, suffix, hasSign) {
+    // Суффикс всегда определяется итоговым словом:
+    // СКИДКА → " от цены на стеле", НАЦЕНКА → " к цене стелы".
+    function buildDiscountText(delta, prefix, hasSign) {
       if (Math.abs(delta) < 0.0001) return 'ЦЕНА СТЕЛЫ';
       const sign = delta > 0 ? '+' : '-';
       const word = delta > 0 ? 'НАЦЕНКА' : 'СКИДКА';
+      const suffix = delta > 0 ? ' к цене стелы' : ' от цены на стеле';
       const numStr = formatNumberRu(Math.abs(delta));
       const body = hasSign
         ? `${word} ${sign} ${numStr}%`
         : `${word} ${numStr}%`;
-      return `${prefix || ''}${body}${suffix || ''}`;
+      return `${prefix || ''}${body}${suffix}`;
     }
 
     // ============================================================
@@ -463,9 +463,9 @@
       }
 
       // НАЦЕНКА/СКИДКА.
-      const parsed = parseDiscountText(str);
+          const parsed = parseDiscountText(str);
       if (parsed) {
-        const newText = buildDiscountText(parsed.delta + textDelta, parsed.prefix, parsed.suffix, parsed.hasSign);
+        const newText = buildDiscountText(parsed.delta + textDelta, parsed.prefix, parsed.hasSign);
         return { value: newText, changed: true, toText: true };
       }
 
