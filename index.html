@@ -2372,14 +2372,14 @@
 
       const color = externalColors[currentExternalNetwork] || '#888888';
 
-      stations.forEach(s => {
+          stations.forEach(s => {
         if (!s.lat || !s.lon) return;
         const marker = L.circleMarker([s.lat, s.lon], {
-          radius: 6,
+          radius: 10,
           fillColor: color,
           color: '#fff',
-          weight: 2,
-          fillOpacity: 0.9,
+          weight: 2.5,
+          fillOpacity: 0.95,
         });
         const popup = `
           <b>${s.name || (s.station_number ? 'АЗС №' + s.station_number : 'АЗС')}</b>
