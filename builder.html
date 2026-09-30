@@ -694,6 +694,20 @@
     .list-item.no-prices:hover {
       opacity: 0.8;
     }
+          /* ---------- Убираем выделение текста в интерфейсе ---------- */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    input, textarea, select, code, pre,
+    #techDetails, #result {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
   </style>
 </head>
 <body>
