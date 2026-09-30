@@ -376,11 +376,16 @@
 </head>
 <body>
    <div class="container">
-    <div class="header-row">
+       <div class="header-row">
       <h1>Админ-панель</h1>
-            <a href="/builder.html" target="_blank" rel="noopener" class="builder-btn">
-        🗺️ Открыть конструктор
-      </a>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="/builder.html" target="_blank" rel="noopener" class="builder-btn">
+          🗺️ Открыть конструктор
+        </a>
+        <a href="/excel-tool.html" target="_blank" rel="noopener" class="builder-btn">
+          📊 Обработка Excel
+        </a>
+      </div>
     </div>
     <div class="form-group">
       <label for="adminKey">Ключ администратора</label>
@@ -736,21 +741,9 @@ async function updateNetwork(id, field, value) {
       }
     }
 async function loadRegions() {
-  try {
-    const regions = await fetchAdmin('regions');
-    const select = document.getElementById('areaSelect');
-    select.innerHTML = '<option value="">Без сообщения</option>';
-    if (Array.isArray(regions)) {
-      regions.forEach(region => {
-        const opt = document.createElement('option');
-        opt.value = region;
-        opt.textContent = region;
-        select.appendChild(opt);
-      });
-    }
-  } catch (e) {
-    console.error(e);
-  }
+  // Вкладка «Создать карту» убрана — селект areaSelect больше не существует.
+  // Функция оставлена как заглушка.
+  return;
 }
   
     let importData = null; // здесь будет храниться распарсенный результат
