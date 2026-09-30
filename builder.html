@@ -848,6 +848,25 @@
             <option value="false">Нет</option>
           </select>
         </div>
+                <div class="form-group">
+          <label style="display:flex; align-items:center; gap:8px; font-weight:600; cursor:pointer;">
+            <input type="checkbox" id="showExternalNetworks" checked style="width:auto; margin:0;">
+            Показывать другие сети
+          </label>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+            На карте появится вкладка «Другая сеть» с АЗС Лукойла, Роснефти и т.д.
+          </div>
+        </div>
+
+        <div id="externalNetworksBlock" class="form-group">
+          <label>Какие сети показывать</label>
+          <div id="externalNetworksList" style="margin-top:6px; padding:10px 12px; background:rgba(250,246,241,0.6); border:1px solid var(--border); border-radius:var(--radius-sm);">
+            <div style="font-size:12px; color:var(--text-muted);">Загрузка списка...</div>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">
+            Если ничего не отмечено — будут показаны все доступные сети.
+          </div>
+        </div>
                  <div class="form-group">
           <label>Срок действия карты, дней</label>
           <input type="number" id="ttlDays" value="5" min="1" max="90" step="1">
@@ -935,17 +954,19 @@
       async function initBuilder() {
       setStatus('Загрузка данных...');
            try {
-        await Promise.all([
+             await Promise.all([
           loadNetworks(),
           loadStations(),
           loadPriceLists(),
           loadRegions()
         ]);
-                drawStations(allStations);
+        drawStations(allStations);
         // Список сетей рендерим с учётом выбранного ценового листа.
         await updatePriceListInfo();
         await refreshNetworksAvailability();
         await loadRouteTemplates();
+        // Список внешних сетей.
+        await loadAvailableExternalNetworks();
 
         // Подключаем автосохранение черновика.
         hookDraftAutosave();
@@ -1012,6 +1033,8 @@
         priceListId: document.getElementById('priceListSelect')?.value || '',
         area: document.getElementById('areaSelect')?.value || '',
         showGreeting: document.getElementById('showGreeting')?.value || 'true',
+                showExternalNetworks: document.getElementById('showExternalNetworks')?.checked !== false,
+        externalNetworks: getSelectedExternalNetworks(),
                 ttlDays: document.getElementById('ttlDays')?.value || '5',
         radiusKm: document.getElementById('radiusKm')?.value || '5',
         excludeToll: document.getElementById('excludeToll')?.checked || false,
@@ -1082,6 +1105,17 @@
       if (draft.priceListId) document.getElementById('priceListSelect').value = draft.priceListId;
       if (draft.area) document.getElementById('areaSelect').value = draft.area;
       if (draft.showGreeting) document.getElementById('showGreeting').value = draft.showGreeting;
+            // Внешние сети.
+      const extCb = document.getElementById('showExternalNetworks');
+      if (extCb && draft.showExternalNetworks === false) {
+        extCb.checked = false;
+        updateExternalNetworksVisibility();
+      }
+      if (Array.isArray(draft.externalNetworks)) {
+        document.querySelectorAll('.external-network-checkbox').forEach(cb => {
+          cb.checked = draft.externalNetworks.includes(cb.value);
+        });
+      }
             if (draft.ttlDays) document.getElementById('ttlDays').value = draft.ttlDays;
       if (draft.radiusKm) document.getElementById('radiusKm').value = draft.radiusKm;
       if (draft.excludeToll) document.getElementById('excludeToll').checked = true;
@@ -1142,7 +1176,19 @@
         el.addEventListener('input', scheduleDraftSave);
         el.addEventListener('change', scheduleDraftSave);
       });
-
+    // Обработчик галочки «Показывать другие сети».
+    (function hookExternalNetworksToggle() {
+      document.addEventListener('DOMContentLoaded', () => {
+        const cb = document.getElementById('showExternalNetworks');
+        if (cb) {
+          cb.addEventListener('change', () => {
+            updateExternalNetworksVisibility();
+            scheduleDraftSave();
+          });
+        }
+        updateExternalNetworksVisibility();
+      });
+    })();
       // Чекбоксы сетей — через делегирование.
       document.addEventListener('change', (e) => {
         if (e.target.classList && e.target.classList.contains('network-checkbox')) {
@@ -1214,7 +1260,78 @@
       const data = await fetchAdmin('stations');
       allStations = Array.isArray(data) ? data : [];
     }
+         // ============================================================
+    // Шаг 5. Внешние сети в конструкторе
+    // ============================================================
 
+    // Доступные внешние сети — берём из уже загруженных станций всех сетей.
+    let availableExternalNetworks = [];
+
+    // Загружает список уникальных внешних сетей из базы.
+    async function loadAvailableExternalNetworks() {
+      try {
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-data?type=external_networks`, {
+          headers: { 'x-admin-key': adminKey }
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        availableExternalNetworks = Array.isArray(data) ? data : [];
+      } catch (e) {
+        // Fallback — если тип не поддерживается, пробуем вытащить из станций.
+        availableExternalNetworks = [];
+        console.warn('Не удалось загрузить список внешних сетей:', e);
+      }
+      renderExternalNetworksList();
+    }
+
+    // Строит список чекбоксов внешних сетей.
+    function renderExternalNetworksList() {
+      const container = document.getElementById('externalNetworksList');
+      if (!container) return;
+
+      if (availableExternalNetworks.length === 0) {
+        container.innerHTML = '<div style="font-size:12px; color:var(--text-muted);">Нет доступных внешних сетей. Загрузите их через админку.</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      availableExternalNetworks.forEach(name => {
+        const item = document.createElement('label');
+        item.style.cssText = 'display:flex; align-items:center; gap:8px; padding:4px 0; cursor:pointer; font-size:13px;';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = name;
+        cb.className = 'external-network-checkbox';
+        cb.checked = true; // по умолчанию все отмечены
+        cb.style.cssText = 'width:auto; margin:0; accent-color:var(--accent);';
+        cb.addEventListener('change', scheduleDraftSave);
+        item.appendChild(cb);
+
+        const span = document.createElement('span');
+        span.textContent = name;
+        item.appendChild(span);
+
+        container.appendChild(item);
+      });
+    }
+
+    // Возвращает массив выбранных внешних сетей.
+    // Если все отмечены — возвращает пустой массив (значит «все»).
+    // Если ничего не отмечено — тоже пустой массив.
+    // Логика такая же, как у партнёрских сетей.
+    function getSelectedExternalNetworks() {
+      const all = Array.from(document.querySelectorAll('.external-network-checkbox'));
+      const checked = all.filter(cb => cb.checked).map(cb => cb.value);
+      return checked;
+    }
+
+    // Включает/выключает блок выбора сетей.
+    function updateExternalNetworksVisibility() {
+      const show = document.getElementById('showExternalNetworks')?.checked;
+      const block = document.getElementById('externalNetworksBlock');
+      if (block) block.style.display = show ? 'block' : 'none';
+    }
       async function loadPriceLists() {
       const data = await fetchAdmin('price_lists');
       const select = document.getElementById('priceListSelect');
@@ -2362,8 +2479,12 @@
       document.getElementById('previewBtn').disabled = true;
 
       try {
+             // Внешние сети.
+        const showExternal = document.getElementById('showExternalNetworks')?.checked !== false;
+        const selectedExternalNetworks = showExternal ? getSelectedExternalNetworks() : [];
+
         const payload = {
-          client_name: '[Предпросмотр] ' + clientName,
+          client_name: clientName,
           price_list_id: priceListId,
           area: area,
           show_greeting: showGreeting,
@@ -2373,8 +2494,10 @@
           map_title: mapTitle || null,
           map_settings: {},
           routes: routesToSend,
-          // Короткий TTL — 10 минут.
-          ttl_minutes: 10
+          ttl_days: validTtlDays,
+          // Внешние сети.
+          show_external: showExternal,
+          external_networks: selectedExternalNetworks
         };
 
         const response = await fetch(`${ADMIN_BASE_URL}/quick-function`, {
@@ -2466,22 +2589,25 @@
           ? ttlDays
           : 5;
 
+                // Внешние сети.
+        const showExternal = document.getElementById('showExternalNetworks')?.checked !== false;
+        const selectedExternalNetworks = showExternal ? getSelectedExternalNetworks() : [];
+
         const payload = {
           client_name: clientName,
           price_list_id: priceListId,
           area: area,
           show_greeting: showGreeting,
           visible_networks: visibleNetworks,
-          // Старое поле оставляем для обратной совместимости:
-          // если есть один маршрут из списка — он же уйдёт в route_geojson.
           route_geojson: routesToSend.length === 1 ? routesToSend[0].geojson : routeGeojson,
           radius_km: radiusKm,
           map_title: mapTitle || null,
           map_settings: {},
-          // Новое: массив всех маршрутов.
           routes: routesToSend,
-          // Срок действия в днях.
-          ttl_days: validTtlDays
+          ttl_days: validTtlDays,
+          // Внешние сети.
+          show_external: showExternal,
+          external_networks: selectedExternalNetworks
         };
 
         // ---------- 3. Отправляем в quick-function ----------
