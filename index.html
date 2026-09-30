@@ -1136,6 +1136,20 @@
         max-width: none;
       }
     }
+          /* ---------- Убираем выделение текста в интерфейсе ---------- */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    input, textarea, select,
+    .leaflet-popup-content {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
   </style>
 </head>
 <body>
