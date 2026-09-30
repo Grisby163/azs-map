@@ -65,6 +65,7 @@
       font-size: 11px; font-weight: 700;
       padding: 2px 8px; border-radius: 999px;
     }
+    .badge.ok { background: var(--success); }
     label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; }
     input[type="text"] {
       width: 100%; padding: 10px 12px;
@@ -89,11 +90,6 @@
       transform: translateY(-1px);
       box-shadow: 0 6px 16px rgba(232,114,12,0.32);
     }
-    button.secondary {
-      background: transparent; color: var(--text);
-      border: 1px solid var(--border); box-shadow: none;
-    }
-    button.secondary:hover { border-color: var(--accent); color: var(--accent); }
     .file-input-wrap {
       position: relative; display: inline-block;
     }
@@ -157,9 +153,9 @@
   <div class="container">
     <h1>Обработка Excel для импорта</h1>
     <p class="subtitle">
-      Загрузите исходный Excel — получите 4 готовых файла: КАРТА, ВИП, Платина, Золото.
-      Цены в колонке C пересчитываются по правилам: ВИП (+1/+2), Платина (+2/+3), Золото (+3/+4).
-      Все стили сохраняются.
+      Загрузите исходный Excel — получите 4 готовых файла для импорта: КАРТА, ВИП, Платина, Золото.
+      Все файлы нормализованы: структура приведена к 3 строкам, текстовые цены приведены к единому формату,
+      лишние пробелы убраны, несопоставленные станции подсвечены жёлтым.
     </p>
 
     <div class="block">
@@ -207,9 +203,16 @@
     // ============================================================
     // Состояние
     // ============================================================
-    let sourceBuffer = null;   // ArrayBuffer исходного файла
-    let originalFileName = ''; // оригинальное имя без расширения
-    let dataStartRow = 3;      // номер строки с которой начинаются данные
+    let sourceBuffer = null;
+    let originalFileName = '';
+    let dataStartRow = 3;
+
+    // Жёлтая заливка для несопоставленных станций.
+    const YELLOW_FILL = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFFFF3C4' }
+    };
 
     // ============================================================
     // Загрузка файла
@@ -225,7 +228,6 @@
       try {
         sourceBuffer = await file.arrayBuffer();
 
-        // Определяем служебную строку.
         const wb = new ExcelJS.Workbook();
         await wb.xlsx.load(sourceBuffer.slice(0));
         const ws = wb.worksheets[0];
@@ -235,12 +237,10 @@
         }
         dataStartRow = detectDataStartRow(ws);
 
-        // Показываем блок имени.
         document.getElementById('nameBlock').style.display = 'block';
         document.getElementById('baseName').value = originalFileName;
         updateNamePreview();
 
-        // Валидируем.
         revalidate();
       } catch (e) {
         alert('Ошибка чтения файла: ' + e.message);
@@ -252,7 +252,6 @@
     // Определение стартовой строки данных
     // ============================================================
     function detectDataStartRow(ws) {
-      // Принудительный override.
       if (document.getElementById('skipRowOverride')?.checked) {
         return 3;
       }
@@ -271,12 +270,11 @@
         }
         if (matches >= 3) return r + 1;
       }
-      // Не определили — по умолчанию 3.
       return 3;
     }
 
     // ============================================================
-    // Обновление превью имени
+    // Превью имени
     // ============================================================
     document.getElementById('baseName').addEventListener('input', updateNamePreview);
 
@@ -293,7 +291,6 @@
     async function revalidate() {
       if (!sourceBuffer) return;
 
-      // Заново определяем стартовую строку, если пользователь переключил галочку.
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.load(sourceBuffer.slice(0));
       const ws = wb.worksheets[0];
@@ -319,11 +316,9 @@
         const h = row.getCell(8).value;
         const lon = row.getCell(9).value;
 
-        // Пустая строка — пропускаем.
         if (isEmpty(a) && isEmpty(b) && isEmpty(c) && isEmpty(e) && isEmpty(f) &&
             isEmpty(g) && isEmpty(h) && isEmpty(lon)) continue;
 
-        // Левая таблица.
         if (!isEmpty(b) && (isEmpty(a) || isEmpty(c))) {
           warnings.push(`Строка ${i}: заполнено название сети «${b}», но пусты регион или цена`);
         }
@@ -338,7 +333,6 @@
           }
         }
 
-        // Правая таблица.
         if (!isEmpty(f)) {
           if (isEmpty(e)) warnings.push(`Строка ${i}: у станции «${f}» пуст регион`);
           if (isEmpty(g)) warnings.push(`Строка ${i}: у станции «${f}» пуст адрес`);
@@ -346,7 +340,6 @@
           if (isEmpty(lon)) warnings.push(`Строка ${i}: у станции «${f}» пуста долгота`);
         }
 
-        // Координаты.
         if (!isEmpty(h)) {
           const lat = parseFloat(String(h).replace(',', '.'));
           if (isNaN(lat) || lat < 41 || lat > 82) {
@@ -371,6 +364,7 @@
       const list = document.getElementById('warningsList');
       const count = document.getElementById('warningsCount');
       count.textContent = warnings.length;
+      count.className = 'badge' + (warnings.length === 0 ? ' ok' : '');
 
       if (warnings.length === 0) {
         list.innerHTML = '<div class="warning-item ok">Ошибок не найдено — файл готов к обработке.</div>';
@@ -382,7 +376,7 @@
     // ============================================================
     // Парсинг и сборка текстовых цен
     // ============================================================
-          function parseDiscountText(text) {
+    function parseDiscountText(text) {
       if (!text) return null;
       const str = String(text).trim();
       const m = str.match(/(НАЦЕНКА|СКИДКА)\s*([+-])?\s*(\d+(?:[.,]\d+)?)\s*%/i);
@@ -406,35 +400,25 @@
       const dotIdx = Math.max(numStr.indexOf('.'), numStr.indexOf(','));
       const decimals = dotIdx >= 0 ? numStr.length - dotIdx - 1 : 0;
 
-      const matched = m[0];
-      const idx = str.indexOf(matched);
-      const prefix = str.slice(0, idx);
-      return { delta, prefix, hasSign, decimals };
+      return { delta, hasSign, decimals };
     }
 
-        // Всегда два знака после запятой, разделитель — запятая.
-       function formatNumberRu(n, decimals) {
+    function formatNumberRu(n, decimals) {
       return n.toFixed(decimals).replace('.', ',');
     }
 
-    // Суффикс всегда определяется итоговым словом:
-    // СКИДКА → " от цены на стеле", НАЦЕНКА → " к цене стелы".
-      function buildDiscountText(delta, prefix, hasSign, decimals) {
+    function buildDiscountText(delta, hasSign, decimals) {
       if (Math.abs(delta) < 0.0001) return 'ЦЕНА СТЕЛЫ';
       const sign = delta > 0 ? '+' : '-';
       const word = delta > 0 ? 'НАЦЕНКА' : 'СКИДКА';
       const suffix = delta > 0 ? ' к цене стелы' : ' от цены на стеле';
       const numStr = formatNumberRu(Math.abs(delta), decimals);
       const body = hasSign
-        ? `${word} ${sign} ${numStr}%`
+        ? `${word} ${sign}${numStr}%`
         : `${word} ${numStr}%`;
-      return `${prefix || ''}${body}${suffix}`;
+      return `${body}${suffix}`;
     }
 
-    // ============================================================
-    // Пересчёт одного значения
-    // ============================================================
-      // Определяет количество знаков после запятой в исходной строке.
     function getDecimals(value) {
       const str = String(value).replace(/\s/g, '');
       const dotIdx = Math.max(str.indexOf('.'), str.indexOf(','));
@@ -442,12 +426,13 @@
       return str.length - dotIdx - 1;
     }
 
+    // Пересчёт одного значения.
+    // numDelta — прибавка к числу; textDelta — прибавка к тексту.
     function recalcPrice(value, numDelta, textDelta) {
       if (value === null || value === undefined || value === '') {
         return { value, changed: false };
       }
 
-      // Число или текст-число.
       const isNumeric = typeof value === 'number' || /^[0-9]+([.,][0-9]+)?$/.test(String(value).trim());
 
       if (isNumeric) {
@@ -458,11 +443,9 @@
           return { value: 'ЦЕНА СТЕЛЫ', changed: true, toText: true };
         }
 
-        // Считаем количество знаков в исходнике. Минимум 2.
         const origDecimals = getDecimals(value);
         const targetDecimals = Math.max(origDecimals, 2);
 
-        // Формат: число + numFmt.
         return {
           value: nv,
           changed: true,
@@ -471,20 +454,13 @@
         };
       }
 
-      // НАЦЕНКА/СКИДКА.
       const str = String(value).trim();
       const parsed = parseDiscountText(str);
       if (parsed) {
-        const newText = buildDiscountText(
-          parsed.delta + textDelta,
-          parsed.prefix,
-          parsed.hasSign,
-          parsed.decimals
-        );
+        const newText = buildDiscountText(parsed.delta + textDelta, parsed.hasSign, parsed.decimals);
         return { value: newText, changed: true, toText: true };
       }
 
-      // Не подходит — копируем как есть.
       return { value, changed: false };
     }
 
@@ -510,25 +486,60 @@
         await wb.xlsx.load(sourceBuffer.slice(0));
         const ws = wb.worksheets[0];
 
-        // Для КАРТА — просто копия, ничего не пересчитываем.
-               if (config.numDelta !== 0 || config.textDelta !== 0) {
-          for (let i = dataStartRow; i <= ws.rowCount; i++) {
-            const row = ws.getRow(i);
-            const cell = row.getCell(3);
-            if (cell.value === null || cell.value === undefined || cell.value === '') continue;
+        // 1. Сдвигаем строки, если в исходнике нет служебной.
+        // Если dataStartRow === 2 — заголовки в 1-й строке. Вставляем пустую строку сверху.
+        let actualStartRow = dataStartRow;
+        if (dataStartRow === 2) {
+          ws.spliceRows(1, 0, []);
+          actualStartRow = 3;
+        }
 
-            const result = recalcPrice(cell.value, config.numDelta, config.textDelta);
+        // 2. Собираем список названий сетей из колонки B.
+        const networkNames = new Set();
+        for (let i = actualStartRow; i <= ws.rowCount; i++) {
+          const b = ws.getRow(i).getCell(2).value;
+          if (b && typeof b === 'string') {
+            networkNames.add(b.trim().toLowerCase());
+          }
+        }
+
+        // 3. Проходим по всем строкам данных.
+        for (let i = actualStartRow; i <= ws.rowCount; i++) {
+          const row = ws.getRow(i);
+
+          // 3.1. Убираем лишние пробелы в A, B, C, E, F, G, H, I.
+          for (const colIdx of [1, 2, 3, 5, 6, 7, 8, 9]) {
+            const cell = row.getCell(colIdx);
+            if (typeof cell.value === 'string') {
+              cell.value = cell.value.trim().replace(/\s+/g, ' ');
+            }
+          }
+
+          // 3.2. Нормализация или пересчёт цены в колонке C.
+          const priceCell = row.getCell(3);
+          if (priceCell.value !== null && priceCell.value !== undefined && priceCell.value !== '') {
+            const result = recalcPrice(priceCell.value, config.numDelta, config.textDelta);
             if (result.changed) {
-              cell.value = result.value;
+              priceCell.value = result.value;
               if (result.toText) {
-                cell.numFmt = '@';
+                priceCell.numFmt = '@';
               } else if (result.toNumeric && result.numFmt) {
-                cell.numFmt = result.numFmt;
+                priceCell.numFmt = result.numFmt;
               }
+            }
+          }
+
+          // 3.3. Проверка станции на «сеть не найдена».
+          const fCell = row.getCell(6);
+          if (fCell.value && typeof fCell.value === 'string') {
+            const netGuess = fCell.value.split('(')[0].trim().toLowerCase();
+            if (netGuess && !networkNames.has(netGuess)) {
+              fCell.fill = YELLOW_FILL;
             }
           }
         }
 
+        // 4. Сохранение.
         const buf = await wb.xlsx.writeBuffer();
         const blob = new Blob([buf], {
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
