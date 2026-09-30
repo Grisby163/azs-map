@@ -2432,11 +2432,11 @@
         ? colorFor([...uniqueNets][0])
         : '#607D8B';
 
-      externalLayer = L.markerClusterGroup({
-        maxClusterRadius: 60,
+           externalLayer = L.markerClusterGroup({
+        maxClusterRadius: 35,
         showCoverageOnHover: false,
         spiderfyOnMaxZoom: true,
-        disableClusteringAtZoom: 14,
+        disableClusteringAtZoom: 11,
         iconCreateFunction: function (cluster) {
           const count = cluster.getChildCount();
           return L.divIcon({
