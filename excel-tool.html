@@ -382,23 +382,32 @@
     // ============================================================
     // Парсинг и сборка текстовых цен
     // ============================================================
-    function parseDiscountText(text) {
+      function parseDiscountText(text) {
       if (!text) return null;
       const str = String(text).trim();
-      const m = str.match(/(НАЦЕНКА|СКИДКА)\s*([+-])\s*(\d+(?:[.,]\d+)?)\s*%/i);
+      // Знак опционален.
+      const m = str.match(/(НАЦЕНКА|СКИДКА)\s*([+-])?\s*(\d+(?:[.,]\d+)?)\s*%/i);
       if (!m) return null;
       const word = m[1].toUpperCase();
-      const sign = m[2];
+      const signChar = m[2] || '';
       const num = parseFloat(m[3].replace(',', '.'));
       if (!isFinite(num)) return null;
-      if (word === 'НАЦЕНКА' && sign !== '+') return null;
-      if (word === 'СКИДКА' && sign !== '-') return null;
+
+      const hasSign = signChar !== '';
+      let delta;
+      if (hasSign) {
+        if (word === 'НАЦЕНКА' && signChar !== '+') return null;
+        if (word === 'СКИДКА' && signChar !== '-') return null;
+        delta = signChar === '-' ? -num : num;
+      } else {
+        delta = word === 'СКИДКА' ? -num : num;
+      }
 
       const matched = m[0];
       const idx = str.indexOf(matched);
       const prefix = str.slice(0, idx);
       const suffix = str.slice(idx + matched.length);
-      return { delta: sign === '-' ? -num : num, prefix, suffix };
+      return { delta, prefix, suffix, hasSign };
     }
 
     function formatNumberRu(n) {
@@ -407,11 +416,14 @@
       return rounded.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
     }
 
-    function buildDiscountText(delta, prefix, suffix) {
+       function buildDiscountText(delta, prefix, suffix, hasSign) {
       if (Math.abs(delta) < 0.0001) return 'ЦЕНА СТЕЛЫ';
       const sign = delta > 0 ? '+' : '-';
       const word = delta > 0 ? 'НАЦЕНКА' : 'СКИДКА';
-      const body = `${word} ${sign} ${formatNumberRu(Math.abs(delta))}%`;
+      const numStr = formatNumberRu(Math.abs(delta));
+      const body = hasSign
+        ? `${word} ${sign} ${numStr}%`
+        : `${word} ${numStr}%`;
       return `${prefix || ''}${body}${suffix || ''}`;
     }
 
@@ -453,7 +465,7 @@
       // НАЦЕНКА/СКИДКА.
       const parsed = parseDiscountText(str);
       if (parsed) {
-        const newText = buildDiscountText(parsed.delta + textDelta, parsed.prefix, parsed.suffix);
+        const newText = buildDiscountText(parsed.delta + textDelta, parsed.prefix, parsed.suffix, parsed.hasSign);
         return { value: newText, changed: true, toText: true };
       }
 
