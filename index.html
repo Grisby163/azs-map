@@ -2191,9 +2191,38 @@
           applyFilters();
         }
       })
-      .catch(error => {
+           .catch(async (error) => {
         console.error('Error fetching stations:', error);
-        document.body.innerHTML = `<h2 style="text-align:center;margin-top:50px;">Ошибка загрузки данных: ${error.message}</h2>`;
+
+        // Пытаемся получить сообщение от сервера.
+        let message = 'Ошибка загрузки данных';
+        try {
+          const resp = await fetch(`${API_URL}?token=${token}`);
+          const data = await resp.json();
+          if (data && data.error) message = data.error;
+        } catch (e) {}
+
+        document.body.innerHTML = `
+          <div style="
+            display:flex; align-items:center; justify-content:center;
+            height:100vh; padding:20px;
+            background: linear-gradient(135deg, #FAF6F1 0%, #FEF3E2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          ">
+            <div style="
+              background:#fff; padding:40px 32px; border-radius:18px;
+              box-shadow: 0 8px 24px rgba(31,27,22,0.12);
+              border: 1px solid #E8E1D8;
+              text-align:center; max-width:420px;
+            ">
+              <div style="font-size:56px; line-height:1; margin-bottom:16px;">🔒</div>
+              <h2 style="color:#1F1B16; font-size:20px; margin:0 0 12px;">Ссылка недействительна</h2>
+              <p style="color:#78716C; font-size:15px; margin:0; line-height:1.5;">
+                ${message}
+              </p>
+            </div>
+          </div>
+        `;
       });
         // ============================================================
     // Шаг 10. Отрисовка маршрута клиента и заголовка карты
