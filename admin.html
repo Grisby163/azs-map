@@ -877,13 +877,17 @@ function parseExcelData(rows) {
   }
   networks.push(...networkSet.values());
 
-  // Построим карту для быстрого поиска по имени (без учёта региона)
+   // Две карты: по имени (fallback) и по имени+региону (точное совпадение).
   const networksByNameLower = new Map();
+  const networksByNameAndRegion = new Map();
+
   networks.forEach(n => {
-    const lower = n.name.toLowerCase();
-    if (!networksByNameLower.has(lower)) {
-      networksByNameLower.set(lower, n);
+    const lowerName = n.name.toLowerCase();
+    if (!networksByNameLower.has(lowerName)) {
+      networksByNameLower.set(lowerName, n);
     }
+    const combinedKey = lowerName + '|' + (n.region || '').toLowerCase();
+    networksByNameAndRegion.set(combinedKey, n);
   });
 
   // Обработка правой таблицы (колонки E=4, F=5, G=6, H=7, I=8)
@@ -904,9 +908,16 @@ function parseExcelData(rows) {
     let networkGuess = nameFull.split('(')[0].trim();
     if (!networkGuess) networkGuess = nameFull;
 
-    // Определяем регион сети: если есть сеть с таким именем в левой таблице, берём её регион, иначе регион станции
+     // Определяем регион сети для станции.
+    // Приоритет:
+    //   1. Точное совпадение (имя + регион станции) — если такая сеть есть в левой таблице.
+    //   2. Fallback — первая сеть с таким именем (если совпадения по региону нет).
+    //   3. Если ни там ни там — берём регион самой станции.
     let networkRegion = currentRegion;
-    if (networksByNameLower.has(networkGuess.toLowerCase())) {
+    const exactKey = networkGuess.toLowerCase() + '|' + (currentRegion || '').toLowerCase();
+    if (networksByNameAndRegion.has(exactKey)) {
+      networkRegion = networksByNameAndRegion.get(exactKey).region;
+    } else if (networksByNameLower.has(networkGuess.toLowerCase())) {
       networkRegion = networksByNameLower.get(networkGuess.toLowerCase()).region;
     }
 
