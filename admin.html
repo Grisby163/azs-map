@@ -1037,7 +1037,8 @@ function submitImport() {
     address: s.address,
     lat: s.lat,
     lon: s.lon,
-    network_name: s.network_name
+    network_name: s.network_name,
+    network_region: s.network_region   // ← добавили эту строку
   }));
 
   const payload = {
