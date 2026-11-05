@@ -1356,7 +1356,7 @@
             function getMarkerColor(station, price) {
       // Явно заданные цвета сетей в админке.
       if (station.color_code === 1) return '#43A047'; // зелёный
-      if (station.color_code === 2) return '#FF9800'; // оранжевый
+      if (station.color_code === 2) return '#10B981'; // оранжевый
       if (station.color_code === 3) return '#1E88E5'; // синий
 
       // Нет цены — синий.
@@ -1368,7 +1368,7 @@
       // Текстовая цена (скидка или наценка) — цвет по слову в тексте.
       if (price.is_discount) {
         const text = (price.discount_text || '').toUpperCase();
-        if (text.includes('НАЦЕНКА')) return '#FF9800'; // оранжевый
+        if (text.includes('НАЦЕНКА')) return '#10B981'; // оранжевый
         return '#43A047'; // зелёный (скидка по умолчанию)
       }
 
