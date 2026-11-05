@@ -1625,8 +1625,10 @@
             // Для наценки — оранжевый, для остального — цвет маркера (зелёный).
             const textColor = upper.includes('НАЦЕНКА') ? '#E8720C' : color;
             popupContent += `<div class="popup-discount" style="color:${textColor}">${text}</div>`;
-          } else {
-            popupContent += `<div class="popup-price" style="color:${color}">${price.price_value} ₽/л</div>`;
+                   } else {
+            // Числовая цена: если маркер салатовый, делаем текст оранжевым.
+            const priceTextColor = (color === '#84CC16') ? '#E8720C' : color;
+            popupContent += `<div class="popup-price" style="color:${priceTextColor}">${price.price_value} ₽/л</div>`;
             if (station.market_price && !isNaN(station.market_price)) {
               const market = parseFloat(station.market_price);
               const diff = market - price.price_value;
