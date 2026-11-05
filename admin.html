@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Админ-панель</title>
     <style>
-    /* ============================================================
-       Шаг 16.1. Тёплая палитра, градиенты, стеклянные карточки.
-       ============================================================ */
-
     :root {
       --bg: #FAF6F1;
       --surface: #FFFFFF;
@@ -61,7 +57,6 @@
     h2 { font-size: 18px; margin: 0 0 14px; }
     h3 { font-size: 15px; color: var(--text-muted); margin: 18px 0 8px; }
 
-    /* ---------- Контейнер: стеклянная карточка ---------- */
     .container {
       max-width: 1100px;
       margin: 0 auto;
@@ -74,7 +69,6 @@
       box-shadow: var(--shadow-soft);
     }
 
-    /* ---------- Формы ---------- */
     .form-group { margin-bottom: 16px; }
     label {
       display: block;
@@ -104,7 +98,6 @@
       box-shadow: 0 0 0 3px rgba(232, 114, 12, 0.12);
     }
 
-    /* ---------- Кнопки ---------- */
     button {
       padding: 10px 20px;
       background: var(--gradient-accent);
@@ -143,7 +136,6 @@
       box-shadow: none;
     }
 
-    /* ---------- Вкладки: скруглённые пилюли с градиентом ---------- */
     .tabs {
       display: flex;
       flex-wrap: wrap;
@@ -182,7 +174,6 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* ---------- Таблицы ---------- */
     table {
       width: 100%;
       border-collapse: separate;
@@ -214,7 +205,6 @@
     tbody tr { transition: background .15s; }
     tbody tr:hover { background: #FDF9F4; }
 
-    /* ---------- Сообщения ---------- */
     .msg {
       margin-top: 14px;
       padding: 12px 16px;
@@ -228,109 +218,40 @@
     .msg.error   { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
     .msg.info    { background: var(--warn-bg); color: #92400E; border: 1px solid #FDE68A; }
 
-    /* ---------- Утилиты ---------- */
     .hidden { display: none; }
     hr { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
     a { color: var(--accent); text-decoration: none; font-weight: 500; }
     a:hover { text-decoration: underline; }
 
-    /* ---------- Адаптивность ---------- */
-        /* ============================================================
-       Шаг 16.5. Адаптив админки
-       ============================================================ */
-
-    /* Планшет: 721–1024 px */
     @media (max-width: 1024px) {
       .container { max-width: 100%; padding: 22px 20px; }
     }
 
-    /* Узкий планшет и телефон: до 720 px */
     @media (max-width: 720px) {
       body { padding: 10px; }
       .container { padding: 16px 14px; border-radius: var(--radius-md); }
       h1 { font-size: 20px; margin-bottom: 14px; }
       h2 { font-size: 16px; }
       h3 { font-size: 14px; }
-
-      /* Табы — горизонтальный скролл, чтобы не сжимались. */
-      .tabs {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-        padding: 4px;
-        gap: 4px;
-      }
+      .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 4px; gap: 4px; }
       .tabs::-webkit-scrollbar { display: none; }
-      .tab {
-        padding: 8px 14px;
-        font-size: 12.5px;
-        white-space: nowrap;
-        flex-shrink: 0;
-        min-height: 34px;
-      }
-
-      /* Формы — крупнее и удобнее пальцу. */
-      input[type="text"],
-      input[type="password"],
-      input[type="number"],
-      select,
-      textarea {
-        font-size: 15px;
-        padding: 11px 12px;
-      }
-      button {
-        padding: 11px 18px;
-        font-size: 14px;
-        min-height: 40px;
-      }
-
-      /* Таблицы — горизонтальный скролл, чтобы не ломались колонки. */
-      #tokensTable,
-      #networksTable,
-      #stationsTable,
-      #priceListsTable,
-      #pricesTable,
-      #unmatchedStations {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        margin-top: 12px;
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-soft);
-      }
-      #tokensTable table,
-      #networksTable table,
-      #stationsTable table,
-      #priceListsTable table,
-      #pricesTable table {
-        min-width: 640px;
-        box-shadow: none;
-        margin-top: 0;
-      }
-      th, td {
-        padding: 9px 10px;
-        font-size: 12.5px;
-        white-space: nowrap;
-      }
-
-      /* Кнопки в строках — компактнее. */
+      .tab { padding: 8px 14px; font-size: 12.5px; white-space: nowrap; flex-shrink: 0; min-height: 34px; }
+      input[type="text"], input[type="password"], input[type="number"], select, textarea { font-size: 15px; padding: 11px 12px; }
+      button { padding: 11px 18px; font-size: 14px; min-height: 40px; }
+      #tokensTable, #networksTable, #stationsTable, #priceListsTable, #pricesTable, #unmatchedStations { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-soft); }
+      #tokensTable table, #networksTable table, #stationsTable table, #priceListsTable table, #pricesTable table { min-width: 640px; box-shadow: none; margin-top: 0; }
+      th, td { padding: 9px 10px; font-size: 12.5px; white-space: nowrap; }
       table button { padding: 7px 10px; font-size: 12px; min-height: 32px; }
-
-      /* Сводка импорта. */
       #importStatus { font-size: 13px; }
     }
 
-    /* Совсем узкие экраны: до 480 px */
     @media (max-width: 480px) {
       body { padding: 6px; }
       .container { padding: 12px 10px; }
       h1 { font-size: 18px; }
       .tab { padding: 7px 10px; font-size: 12px; }
-      input[type="text"], input[type="password"], input[type="number"], select {
-        font-size: 16px; /* iOS не зумит при фокусе */
-      }
+      input[type="text"], input[type="password"], input[type="number"], select { font-size: 16px; }
     }
-          /* ---------- Шапка админки с кнопкой конструктора ---------- */
     .header-row {
       display: flex;
       align-items: center;
@@ -339,93 +260,36 @@
       flex-wrap: wrap;
       margin-bottom: 20px;
     }
-    .header-row h1 {
-      margin: 0;
-      flex: 1;
-    }
-       .builder-btn {
-      padding: 10px 18px;
-      font-size: 13.5px;
-      white-space: nowrap;
-      flex-shrink: 0;
-      display: inline-block;
-      background: var(--gradient-accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-family: inherit;
-      font-weight: 600;
-      text-decoration: none;
-      box-shadow: 0 2px 6px rgba(232, 114, 12, 0.25);
-      transition: transform .12s, box-shadow .18s, filter .18s;
+    .header-row h1 { margin: 0; flex: 1; }
+    .builder-btn {
+      padding: 10px 18px; font-size: 13.5px; white-space: nowrap; flex-shrink: 0; display: inline-block;
+      background: var(--gradient-accent); color: #fff; border: none; border-radius: var(--radius-sm);
+      cursor: pointer; font-family: inherit; font-weight: 600; text-decoration: none;
+      box-shadow: 0 2px 6px rgba(232, 114, 12, 0.25); transition: transform .12s, box-shadow .18s, filter .18s;
     }
     .builder-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(232, 114, 12, 0.32);
-      filter: brightness(1.03);
-      text-decoration: none;
-      color: #fff;
+      transform: translateY(-1px); box-shadow: 0 6px 16px rgba(232, 114, 12, 0.32);
+      filter: brightness(1.03); text-decoration: none; color: #fff;
     }
     @media (max-width: 480px) {
       .header-row { flex-direction: column; align-items: stretch; }
       .builder-btn { width: 100%; }
     }
-          /* ---------- Под-вкладки импорта ---------- */
     .import-subtabs {
-      display: flex;
-      gap: 6px;
-      padding: 4px;
-      background: rgba(232, 225, 216, 0.4);
-      border-radius: var(--radius-md);
-      margin-bottom: 18px;
-      overflow-x: auto;
-      scrollbar-width: none;
+      display: flex; gap: 6px; padding: 4px; background: rgba(232, 225, 216, 0.4);
+      border-radius: var(--radius-md); margin-bottom: 18px; overflow-x: auto; scrollbar-width: none;
     }
     .import-subtabs::-webkit-scrollbar { display: none; }
     .import-subtab {
-      padding: 8px 18px;
-      border-radius: 999px;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background .18s, color .18s;
-      white-space: nowrap;
-      flex-shrink: 0;
-      box-shadow: none;
+      padding: 8px 18px; border-radius: 999px; border: none; background: transparent;
+      color: var(--text-muted); font-size: 13px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: background .18s, color .18s; white-space: nowrap;
+      flex-shrink: 0; box-shadow: none;
     }
-    .import-subtab:hover {
-      background: rgba(255, 255, 255, 0.7);
-      color: var(--text);
-      transform: none;
-    }
-    .import-subtab.active {
-      background: var(--gradient-accent);
-      color: #fff;
-      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.28);
-    }
+    .import-subtab:hover { background: rgba(255, 255, 255, 0.7); color: var(--text); transform: none; }
+    .import-subtab.active { background: var(--gradient-accent); color: #fff; box-shadow: 0 3px 10px rgba(232, 114, 12, 0.28); }
     .import-section { display: none; }
     .import-section.active { display: block; }
-          /* ---------- Убираем выделение текста в интерфейсе ---------- */
-    body {
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-    }
-    /* Разрешаем выделение там, где оно нужно */
-    input, textarea, select, code, pre,
-    .tech-details, #techDetails, #result, #createResult,
-    #tokensTable a, #tokensTable td[style*="monospace"] {
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
-      user-select: text;
-    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -434,12 +298,8 @@
        <div class="header-row">
       <h1>Админ-панель</h1>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a href="/builder.html" target="_blank" rel="noopener" class="builder-btn">
-          🗺️ Открыть конструктор
-        </a>
-        <a href="/excel-tool.html" target="_blank" rel="noopener" class="builder-btn">
-          📊 Обработка Excel
-        </a>
+        <a href="/builder.html" target="_blank" rel="noopener" class="builder-btn">🗺️ Открыть конструктор</a>
+        <a href="/excel-tool.html" target="_blank" rel="noopener" class="builder-btn">📊 Обработка Excel</a>
       </div>
     </div>
     <div class="form-group">
@@ -467,8 +327,8 @@
       <div id="prices" class="tab-content">
         <h2>Редактирование цен</h2>
         <div class="form-group">
-        <label>Ценовой лист</label>
-        <select id="priceListForPrices" onchange="loadPricesForEditing()"></select>
+          <label>Ценовой лист</label>
+          <select id="priceListForPrices" onchange="loadPricesForEditing()"></select>
         </div>
         <button onclick="loadPricesForEditing()">Загрузить цены</button>
         <div id="pricesTable"></div>
@@ -478,53 +338,44 @@
         <button onclick="loadNetworks()">Обновить</button>
         <div id="networksTable"></div>
       </div>
-
       <div id="stations" class="tab-content">
         <h2>Станции</h2>
         <button onclick="loadStations()">Обновить</button>
         <div id="stationsTable"></div>
       </div>
-
       <div id="priceLists" class="tab-content">
         <h2>Ценовые листы</h2>
         <button onclick="loadPriceLists()">Обновить</button>
         <div id="priceListsTable"></div>
       </div>
 
-
-         <div id="import" class="tab-content">
+      <div id="import" class="tab-content">
         <h2>Импорт из Excel</h2>
-
-              <div class="import-subtabs">
+        <div class="import-subtabs">
           <button class="import-subtab active" onclick="switchImportTab('partner', this)">Партнёрская сеть</button>
           <button class="import-subtab" onclick="switchImportTab('lukoil', this)">Лукойл</button>
           <button class="import-subtab" onclick="switchImportTab('rosneft', this)">Роснефть</button>
         </div>
 
         <div id="import-partner" class="import-section active">
-                <div style="padding:12px 14px; background:var(--warn-bg); border:1px solid #FDE68A; border-radius:var(--radius-sm); margin-bottom:14px; font-size:12.5px; line-height:1.6; color:#92400E;">
-          <b>Формат текстовых цен в колонке C:</b><br>
-          • Наценка: <code style="background:#fff; padding:1px 6px; border-radius:4px;">НАЦЕНКА +1,5%</code><br>
-          • Скидка: <code style="background:#fff; padding:1px 6px; border-radius:4px;">СКИДКА -1,8%</code><br>
-          • Пробелы допустимы, разделитель — запятая.<br>
-          Если текст не совпадает с форматом — он копируется во все листы без изменений.
-        </div>
-        <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
-        <div id="importStatus"></div>
-              <div id="mappingSection" style="display:none;">
-          <h3>Несопоставленные станции</h3>
-          <p>Для каждой станции укажите сеть из списка или создайте новую.</p>
-          <div id="unmatchedStations"></div>
-          <button onclick="submitImport()">Отправить импорт</button>
-        </div>
+          <div style="padding:12px 14px; background:var(--warn-bg); border:1px solid #FDE68A; border-radius:var(--radius-sm); margin-bottom:14px; font-size:12.5px; line-height:1.6; color:#92400E;">
+            <b>Формат цен в колонке:</b> <code>НАЦЕНКА +1,5%</code> или <code>СКИДКА -1,8%</code>.<br>
+            Разделитель — запятая. Если текст не совпадает — он копируется во все листы без изменений.
+          </div>
+          <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
+          <div id="importStatus"></div>
+          <div id="mappingSection" style="display:none;">
+            <h3>Несопоставленные станции</h3>
+            <p>Для каждой станции укажите сеть из списка или создайте новую.</p>
+            <div id="unmatchedStations"></div>
+            <button onclick="submitImport()">Отправить импорт</button>
+          </div>
         </div>
 
         <div id="import-lukoil" class="import-section">
           <div style="padding:12px 14px; background:var(--warn-bg); border:1px solid #FDE68A; border-radius:var(--radius-sm); margin-bottom:14px; font-size:12.5px; line-height:1.6; color:#92400E;">
             <b>Формат файла Лукойла (ЛИКАРД-Процессинг):</b><br>
-            Импортируются колонки: <code>АЗС №</code>, <code>Адрес АЗС</code>, <code>Регион</code>, <code>Широта</code>, <code>Долгота</code>.<br>
-            Заголовки могут быть многоуровневыми — парсер найдёт нужные колонки автоматически.<br>
-            <b>Импорт заменяет все станции Лукойла.</b>
+            Импортируются колонки: <code>АЗС №</code>, <code>Адрес АЗС</code>, <code>Регион</code>, <code>Широта</code>, <code>Долгота</code>.
           </div>
           <input type="file" id="lukoilFile" accept=".xlsx, .xls" onchange="handleLukoilUpload(event)">
           <div id="lukoilStatus"></div>
@@ -532,58 +383,33 @@
 
         <div id="import-rosneft" class="import-section">
           <div style="padding:12px 14px; background:var(--warn-bg); border:1px solid #FDE68A; border-radius:var(--radius-sm); margin-bottom:14px; font-size:12.5px; line-height:1.6; color:#92400E;">
-            <b>Формат файла Роснефти («Выгодный транзит»):</b><br>
-            Импортируются колонки: <code>Точка обслуживания</code>, <code>Адрес ТО</code>, <code>Долгота</code>, <code>Широта</code>.<br>
-            Обратите внимание: сначала долгота, потом широта.<br>
-            <b>Импорт заменяет все станции Роснефти.</b>
+            <b>Формат файла Роснефти:</b><br>
+            Импортируются колонки: <code>Точка обслуживания</code>, <code>Адрес ТО</code>, <code>Долгота</code>, <code>Широта</code>.
           </div>
           <input type="file" id="rosneftFile" accept=".xlsx, .xls" onchange="handleRosneftUpload(event)">
           <div id="rosneftStatus"></div>
         </div>
       </div>
-            <div id="clear" class="tab-content">
-        <h2>Очистка базы данных</h2>
-        <p style="color:#d32f2f; font-weight:bold;">
-          Внимание: удаление необратимо. Бэкапов нет. Действуйте осознанно.
-        </p>
 
+      <div id="clear" class="tab-content">
+        <h2>Очистка базы данных</h2>
+        <p style="color:#d32f2f; font-weight:bold;">Внимание: удаление необратимо. Бэкапов нет.</p>
         <div class="form-group">
           <label>Что очистить</label>
           <div style="margin-top:6px; line-height:1.9;">
-            <label style="font-weight:normal;">
-              <input type="checkbox" class="clear-table" value="prices"> Цены
-            </label><br>
-            <label style="font-weight:normal;">
-              <input type="checkbox" class="clear-table" value="tokens"> Клиенты (токены)
-            </label><br>
-            <label style="font-weight:normal;">
-              <input type="checkbox" class="clear-table" value="stations"> Станции
-            </label><br>
-            <label style="font-weight:normal;">
-              <input type="checkbox" class="clear-table" value="networks"> Сети
-            </label><br>
-            <label style="font-weight:normal;">
-              <input type="checkbox" class="clear-table" value="price_lists"> Ценовые листы
-            </label><br>
-            <label style="font-weight:normal;">
-              <input type="checkbox" class="clear-table" value="routes"> Маршруты (шаблоны)
-            </label>
+            <label style="font-weight:normal;"><input type="checkbox" class="clear-table" value="prices"> Цены</label><br>
+            <label style="font-weight:normal;"><input type="checkbox" class="clear-table" value="tokens"> Клиенты (токены)</label><br>
+            <label style="font-weight:normal;"><input type="checkbox" class="clear-table" value="stations"> Станции</label><br>
+            <label style="font-weight:normal;"><input type="checkbox" class="clear-table" value="networks"> Сети</label><br>
+            <label style="font-weight:normal;"><input type="checkbox" class="clear-table" value="price_lists"> Ценовые листы</label><br>
+            <label style="font-weight:normal;"><input type="checkbox" class="clear-table" value="routes"> Маршруты (шаблоны)</label>
           </div>
         </div>
-
         <div style="margin-top:14px;">
           <button onclick="clearSelected()">Очистить выбранное</button>
-          <button onclick="clearAll()" style="background:#d32f2f; margin-left:8px;">
-            Очистить ВСЁ
-          </button>
+          <button onclick="clearAll()" style="background:#d32f2f; margin-left:8px;">Очистить ВСЁ</button>
         </div>
-
         <div id="clearStatus" class="msg"></div>
-
-        <p style="font-size:12px; color:#666; margin-top:14px;">
-          Совет: при очистке «Станции» или «Сети» добавляйте в список и «Цены» —
-          иначе внешние ключи могут заблокировать удаление.
-        </p>
       </div>
     </div>
   </div>
@@ -592,7 +418,6 @@
     const ADMIN_BASE_URL = 'https://cbctbbaekgmsogfxpvoy.supabase.co/functions/v1';
     let adminKey = localStorage.getItem('adminKey') || '';
 
-    // Восстановление ключа при загрузке
     if (adminKey) {
       document.getElementById('adminKey').value = adminKey;
       document.getElementById('authSection').classList.remove('hidden');
@@ -600,7 +425,7 @@
       loadPriceListsForPrices();
     }
 
-     function saveAdminKey() {
+    function saveAdminKey() {
       adminKey = document.getElementById('adminKey').value.trim();
       if (adminKey) {
         localStorage.setItem('adminKey', adminKey);
@@ -611,8 +436,7 @@
         alert('Введите ключ');
       }
     }
-        // Открывает конструктор карт в новой вкладке.
-  
+
     function switchTab(tabId) {
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -642,122 +466,91 @@
         });
         html += '</table>';
         container.innerHTML = html;
-      } catch (e) {
-        alert(e.message);
-      }
-    }
-
-    async function loadPriceListsForForm() {
-      // Вкладка «Создать карту» убрана — селект priceListSelect больше не существует.
-      // Функция оставлена как заглушка, чтобы не ломать старые вызовы.
-      return;
+      } catch (e) { alert(e.message); }
     }
 
     async function loadNetworks() {
-  try {
-    const data = await fetchAdmin('networks');
-    const container = document.getElementById('networksTable');
-    if (!Array.isArray(data) || data.length === 0) {
-      container.innerHTML = '<p>Нет данных</p>';
-      return;
+      try {
+        const data = await fetchAdmin('networks');
+        const container = document.getElementById('networksTable');
+        if (!Array.isArray(data) || data.length === 0) {
+          container.innerHTML = '<p>Нет данных</p>';
+          return;
+        }
+        let html = '<table><tr><th>ID</th><th>Название</th><th>Цвет</th><th>Видимость</th></tr>';
+        data.forEach(net => {
+          html += `<tr>
+            <td>${net.id}</td>
+            <td>${net.name} (${net.region || '—'})</td>
+            <td>
+              <select onchange="updateNetwork('${net.id}', 'color_code', this.value)">
+                <option value="0" ${net.color_code === 0 ? 'selected' : ''}>Авто</option>
+                <option value="1" ${net.color_code === 1 ? 'selected' : ''}>Ярко-зелёный</option>
+                <option value="2" ${net.color_code === 2 ? 'selected' : ''}>Салатовый</option>
+                <option value="3" ${net.color_code === 3 ? 'selected' : ''}>Синий</option>
+              </select>
+            </td>
+            <td><input type="checkbox" ${net.visible ? 'checked' : ''} onchange="updateNetwork('${net.id}', 'visible', this.checked)"></td>
+          </tr>`;
+        });
+        html += '</table>';
+        container.innerHTML = html;
+      } catch (e) { alert(e.message); }
     }
-    let html = '<table><tr><th>ID</th><th>Название</th><th>Цвет</th><th>Видимость</th></tr>';
-    data.forEach(net => {
-      html += `<tr>
-        <td>${net.id}</td>
-        <td>${net.name} (${net.region || '—'})</td>
-        <td>
-          <select onchange="updateNetwork('${net.id}', 'color_code', this.value)">
-            <option value="0" ${net.color_code === 0 ? 'selected' : ''}>Авто</option>
-           <option value="1" ${net.color_code === 1 ? 'selected' : ''}>Ярко-зелёный</option>
-<option value="2" ${net.color_code === 2 ? 'selected' : ''}>Салатовый</option>
-            <option value="3" ${net.color_code === 3 ? 'selected' : ''}>Синий</option>
-          </select>
-        </td>
-        <td>
-          <input type="checkbox" ${net.visible ? 'checked' : ''} onchange="updateNetwork('${net.id}', 'visible', this.checked)">
-        </td>
-      </tr>`;
-    });
-    html += '</table>';
-    container.innerHTML = html;
-  } catch (e) {
-    alert(e.message);
-  }
-}
-async function updateNetwork(id, field, value) {
-  try {
-    const response = await fetch(`${ADMIN_BASE_URL}/admin-update`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-key': adminKey
-      },
-      body: JSON.stringify({
-        table: 'networks',
-        id: id,
-        data: { [field]: value }
-      })
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      alert('Ошибка обновления: ' + (err.error || response.status));
-    }
-  } catch (e) {
-    alert('Ошибка сети: ' + e.message);
-  }
-}
-    async function updateStation(id, field, value) {
-  try {
-    const response = await fetch(`${ADMIN_BASE_URL}/admin-update`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-key': adminKey
-      },
-      body: JSON.stringify({
-        table: 'stations',
-        id: id,
-        data: { [field]: value }
-      })
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      alert('Ошибка обновления: ' + (err.error || response.status));
-    }
-  } catch (e) {
-    alert('Ошибка станции: ' + e.message);
-  }
-}
-    async function loadStations() {
-  try {
-    const data = await fetchAdmin('stations');
-    const container = document.getElementById('stationsTable');
-    if (!Array.isArray(data) || data.length === 0) {
-      container.innerHTML = '<p>Нет данных</p>';
-      return;
-    }
-    let html = '<table><tr><th>ID</th><th>Название</th><th>Сеть</th><th>Адрес</th><th>Регион</th><th>Видимость</th></tr>';
-    data.forEach(st => {
-      html += `<tr>
-        <td>${st.id}</td>
-        <td>${st.name}</td>
-        <td>${st.networks ? `${st.networks.name} (${st.networks.region || '—'})` : '—'}</td>
-        <td>${st.address || ''}</td>
-        <td>${st.region || ''}</td>
-        <td>
-          <input type="checkbox" ${st.visible ? 'checked' : ''} onchange="updateStation('${st.id}', 'visible', this.checked)">
-        </td>
-      </tr>`;
-    });
-    html += '</table>';
-    container.innerHTML = html;
-  } catch (e) {
-    alert(e.message);
-  }
-}
 
-       async function loadTokens() {
+    async function updateNetwork(id, field, value) {
+      try {
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+          body: JSON.stringify({ table: 'networks', id: id, data: { [field]: value } })
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          alert('Ошибка обновления: ' + (err.error || response.status));
+        }
+      } catch (e) { alert('Ошибка сети: ' + e.message); }
+    }
+
+    async function updateStation(id, field, value) {
+      try {
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+          body: JSON.stringify({ table: 'stations', id: id, data: { [field]: value } })
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          alert('Ошибка обновления: ' + (err.error || response.status));
+        }
+      } catch (e) { alert('Ошибка станции: ' + e.message); }
+    }
+
+    async function loadStations() {
+      try {
+        const data = await fetchAdmin('stations');
+        const container = document.getElementById('stationsTable');
+        if (!Array.isArray(data) || data.length === 0) {
+          container.innerHTML = '<p>Нет данных</p>';
+          return;
+        }
+        let html = '<table><tr><th>ID</th><th>Название</th><th>Сеть</th><th>Адрес</th><th>Регион</th><th>Видимость</th></tr>';
+        data.forEach(st => {
+          html += `<tr>
+            <td>${st.id}</td>
+            <td>${st.name}</td>
+            <td>${st.networks ? `${st.networks.name} (${st.networks.region || '—'})` : '—'}</td>
+            <td>${st.address || ''}</td>
+            <td>${st.region || ''}</td>
+            <td><input type="checkbox" ${st.visible ? 'checked' : ''} onchange="updateStation('${st.id}', 'visible', this.checked)"></td>
+          </tr>`;
+        });
+        html += '</table>';
+        container.innerHTML = html;
+      } catch (e) { alert(e.message); }
+    }
+
+    async function loadTokens() {
       try {
         const data = await fetchAdmin('tokens');
         const container = document.getElementById('tokensTable');
@@ -765,49 +558,22 @@ async function updateNetwork(id, field, value) {
           container.innerHTML = '<p>Нет данных</p>';
           return;
         }
-
         const now = new Date();
-
-        let html = '<table><tr>' +
-          '<th>Клиент</th>' +
-          '<th>Токен</th>' +
-          '<th>Область</th>' +
-          '<th>Ценовой лист</th>' +
-          '<th>Создан</th>' +
-          '<th>Просмотры</th>' +
-          '<th>Последний просмотр</th>' +
-          '<th>Истекает через</th>' +
-          '<th>Короткая ссылка</th>' +
-          '<th>Действия</th>' +
-          '</tr>';
-
+        let html = '<table><tr><th>Клиент</th><th>Токен</th><th>Область</th><th>Ценовой лист</th><th>Создан</th><th>Просмотры</th><th>Последний просмотр</th><th>Истекает через</th><th>Короткая ссылка</th><th>Действия</th></tr>';
         data.forEach(t => {
-          // Последний просмотр.
-          const lastViewed = t.last_viewed_at
-            ? new Date(t.last_viewed_at).toLocaleString('ru-RU')
-            : '<span style="color:#999;">не открывали</span>';
-
-          // Дней до истечения.
+          const lastViewed = t.last_viewed_at ? new Date(t.last_viewed_at).toLocaleString('ru-RU') : '<span style="color:#999;">не открывали</span>';
           let expiryHtml = '<span style="color:#999;">—</span>';
           if (t.expires_at) {
             const expires = new Date(t.expires_at);
             const daysLeft = Math.ceil((expires - now) / (1000 * 60 * 60 * 24));
-            if (daysLeft < 0) {
-              expiryHtml = '<span style="color:#d32f2f; font-weight:bold;">истёк</span>';
-            } else if (daysLeft === 0) {
-              expiryHtml = '<span style="color:#d32f2f; font-weight:bold;">сегодня</span>';
-            } else if (daysLeft <= 2) {
-              expiryHtml = `<span style="color:#FF9800; font-weight:bold;">${daysLeft} дн.</span>`;
-            } else {
-              expiryHtml = `<span style="color:#2e7d32;">${daysLeft} дн.</span>`;
-            }
+            if (daysLeft < 0) expiryHtml = '<span style="color:#d32f2f; font-weight:bold;">истёк</span>';
+            else if (daysLeft === 0) expiryHtml = '<span style="color:#d32f2f; font-weight:bold;">сегодня</span>';
+            else if (daysLeft <= 2) expiryHtml = `<span style="color:#FF9800; font-weight:bold;">${daysLeft} дн.</span>`;
+            else expiryHtml = `<span style="color:#2e7d32;">${daysLeft} дн.</span>`;
           }
-
-                   // Кнопки действий.
           const clientName = t.client_name || 'без имени';
-          const actions =
-            `<button onclick="deleteCard('${t.token}', '${clientName.replace(/'/g, "\\'")}')" class="secondary" style="font-size:11px; padding:3px 8px; color:#DC2626; border-color:#DC2626;">Удалить</button>`;
-
+          const actions = `<button onclick="deleteCard('${t.token}', '${clientName.replace(/'/g, "\\'")}')" class="secondary" style="font-size:11px; padding:3px 8px; color:#DC2626; border-color:#DC2626;">Удалить</button>`;
+          
           html += `<tr>
             <td>${t.client_name || ''}</td>
             <td style="font-family:monospace; font-size:11px;">${t.token}</td>
@@ -823,463 +589,304 @@ async function updateNetwork(id, field, value) {
         });
         html += '</table>';
         container.innerHTML = html;
-      } catch (e) {
-        alert(e.message);
-      }
-    }
-async function loadRegions() {
-  // Вкладка «Создать карту» убрана — селект areaSelect больше не существует.
-  // Функция оставлена как заглушка.
-  return;
-}
-  
-    let importData = null; // здесь будет храниться распарсенный результат
-
-function handleExcelUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]; // Лист1
-      if (!sheet) {
-        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не найден лист</p>';
-        return;
-      }
-      const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      parseExcelData(json);
-    } catch (err) {
-      document.getElementById('importStatus').innerHTML = '<p style="color:red;">Ошибка чтения файла: ' + err.message + '</p>';
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function parseExcelData(rows) {
-  const networks = [];
-  const stations = [];
-  const networkSet = new Map(); // key = name|region
-
-  // Обработка левой таблицы (колонки A=0, B=1, C=2)
-  for (let i = 2; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row) continue;
-    const region = (row[0] || '').toString().trim();
-    const name = (row[1] || '').toString().trim();
-    const price = (row[2] || '').toString().trim();
-    if (!name) continue;
-    const key = name + '|' + region;
-    if (!networkSet.has(key)) {
-      networkSet.set(key, { name, region, price });
-    }
-  }
-  networks.push(...networkSet.values());
-
-   // Две карты: по имени (fallback) и по имени+региону (точное совпадение).
-  const networksByNameLower = new Map();
-  const networksByNameAndRegion = new Map();
-
-  networks.forEach(n => {
-    const lowerName = n.name.toLowerCase();
-    if (!networksByNameLower.has(lowerName)) {
-      networksByNameLower.set(lowerName, n);
-    }
-    const combinedKey = lowerName + '|' + (n.region || '').toLowerCase();
-    networksByNameAndRegion.set(combinedKey, n);
-  });
-
-  // Обработка правой таблицы (колонки E=4, F=5, G=6, H=7, I=8)
-  let lastRegion = '';
-  for (let i = 2; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row) continue;
-    const regionRaw = (row[4] || '').toString().trim();
-    if (regionRaw) lastRegion = regionRaw;
-    const currentRegion = lastRegion; // используем последний непустой
-    const nameFull = (row[5] || '').toString().trim();
-    const address = (row[6] || '').toString().trim();
-    const lat = parseFloat(row[7]);
-    const lon = parseFloat(row[8]);
-    if (!nameFull || isNaN(lat) || isNaN(lon)) continue;
-
-    // Извлекаем имя сети: до первой скобки
-    let networkGuess = nameFull.split('(')[0].trim();
-    if (!networkGuess) networkGuess = nameFull;
-
-     // Определяем регион сети для станции.
-    // Приоритет:
-    //   1. Точное совпадение (имя + регион станции) — если такая сеть есть в левой таблице.
-    //   2. Fallback — первая сеть с таким именем (если совпадения по региону нет).
-    //   3. Если ни там ни там — берём регион самой станции.
-    let networkRegion = currentRegion;
-    const exactKey = networkGuess.toLowerCase() + '|' + (currentRegion || '').toLowerCase();
-    if (networksByNameAndRegion.has(exactKey)) {
-      networkRegion = networksByNameAndRegion.get(exactKey).region;
-    } else if (networksByNameLower.has(networkGuess.toLowerCase())) {
-      networkRegion = networksByNameLower.get(networkGuess.toLowerCase()).region;
+      } catch (e) { alert(e.message); }
     }
 
-    stations.push({
-      region: currentRegion,
-      name: nameFull,
-      address,
-      lat,
-      lon,
-      network_name: networkGuess,
-      network_region: networkRegion,
-      matched: false,
-      networkOptions: networks
-    });
-  }
-
-  // Проверка сопоставления
-  const networkNames = networks.map(n => n.name.toLowerCase());
-  stations.forEach(station => {
-    if (networkNames.includes(station.network_name.toLowerCase())) {
-      station.matched = true;
-    }
-  });
-
-  importData = { networks, stations };
-  displayImportSummary();
-}
-
-function displayImportSummary() {
-  const statusDiv = document.getElementById('importStatus');
-  const totalNetworks = importData.networks.length;
-  const totalStations = importData.stations.length;
-  const unmatched = importData.stations.filter(s => !s.matched);
-  statusDiv.innerHTML = `
-    <p>Найдено сетей: ${totalNetworks}</p>
-    <p>Найдено станций: ${totalStations}</p>
-    <p>Несопоставлено станций: ${unmatched.length}</p>
-  `;
-
-  if (unmatched.length > 0) {
-    document.getElementById('mappingSection').style.display = 'block';
-    renderUnmatchedList(unmatched);
-  } else {
-    document.getElementById('mappingSection').style.display = 'none';
-    // Все сопоставлены, можно сразу отправить
-    submitImport();
-  }
-}
-
-function renderUnmatchedList(unmatched) {
-  const container = document.getElementById('unmatchedStations');
-  let html = '<table border="1" cellpadding="5"><tr><th>Станция</th><th>Адрес</th><th>Выберите сеть</th></tr>';
-  unmatched.forEach((station, idx) => {
-    html += `<tr>
-      <td>${station.name}</td>
-      <td>${station.address}</td>
-      <td>
-        <select id="select_${idx}">
-          <option value="">-- выбрать сеть --</option>
-          <option value="__delete__">УДАЛИТЬ</option>
-          <option value="">-- выбрать сеть --</option>
-          ${station.networkOptions.map(n => `<option value="${n.name}">${n.name}</option>`).join('')}
-          <option value="__new__">Создать новую...</option>
-        </select>
-        <input type="text" id="newNetwork_${idx}" placeholder="Название новой сети" style="display:none;">
-      </td>
-    </tr>`;
-  });
-  html += '</table>';
-  container.innerHTML = html;
-
-  // Обработчики для селектов
-  unmatched.forEach((station, idx) => {
-    const select = document.getElementById(`select_${idx}`);
-    select.addEventListener('change', function() {
-      const newInput = document.getElementById(`newNetwork_${idx}`);
-      if (this.value === '__new__') {
-        newInput.style.display = 'inline';
-        newInput.focus();
-      } else {
-        newInput.style.display = 'none';
-      }
-    });
-  });
-}
-
-function submitImport() {
-  // Для несопоставленных обрабатываем выбор
-  if (importData.stations.some(s => !s.matched)) {
-    const unmatchedIndexes = [];
-    importData.stations.forEach((station, idx) => {
-      if (!station.matched) unmatchedIndexes.push(idx);
-    });
-    unmatchedIndexes.forEach((idx, i) => {
-      const select = document.getElementById(`select_${i}`);
-      if (select.value === '__delete__') {
-        // пометим на удаление
-        importData.stations[idx].__delete = true;
-      } else {
-        importData.stations[idx].__delete = false;
-        if (select.value === '__new__') {
-          importData.stations[idx].network_name = document.getElementById(`newNetwork_${i}`).value.trim();
-          if (importData.stations[idx].network_name && !importData.networks.some(n => n.name === importData.stations[idx].network_name)) {
-            importData.networks.push({ name: importData.stations[idx].network_name, region: '', price: '' });
-          }
-        } else if (select.value) {
-          importData.stations[idx].network_name = select.value;
-        }
-      }
-    });
-  }
-
-  // Отбираем станции без пометки на удаление
-  const stationsToSend = importData.stations.filter(s => !s.__delete).map(s => ({
-    region: s.region,
-    name: s.name,
-    address: s.address,
-    lat: s.lat,
-    lon: s.lon,
-    network_name: s.network_name,
-    network_region: s.network_region
-  }));
-
-  const payload = {
-    networks: importData.networks,
-    stations: stationsToSend
-  };
-
-  // Отправляем на сервер
-  fetch(`${ADMIN_BASE_URL}/admin-import`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-key': adminKey
-    },
-    body: JSON.stringify(payload)
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.error) {
-      document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка: ${data.error}</p>`;
-    } else {
-      document.getElementById('importStatus').innerHTML += `<p style="color:green;">Импорт успешно завершён! Станций: ${data.processedStations}</p>`;
-    }
-  })
-  .catch(err => {
-    document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
-  });
-}
-    // Заполнение выпадающего списка ценовых листов на вкладке "Цены"
-async function loadPriceListsForPrices() {
-  try {
-    const data = await fetchAdmin('price_lists');
-    const select = document.getElementById('priceListForPrices');
-    select.innerHTML = '';
-    if (Array.isArray(data)) {
-      data.forEach(pl => {
-        const opt = document.createElement('option');
-        opt.value = pl.id;
-        opt.textContent = pl.name;
-        select.appendChild(opt);
-      });
-      // Если есть листы, сразу загружаем цены для первого
-      if (data.length > 0) loadPricesForEditing();
-    }
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-// Загрузка цен для выбранного листа
-async function loadPricesForEditing() {
-  const priceListId = document.getElementById('priceListForPrices').value;
-  if (!priceListId) return;
-
-  try {
-    // Используем прямой fetch, чтобы передать дополнительный параметр
-    const response = await fetch(`${ADMIN_BASE_URL}/admin-data?type=prices_by_list&price_list_id=${priceListId}`, {
-      headers: { 'x-admin-key': adminKey }
-    });
-    if (!response.ok) throw new Error('Ошибка загрузки: ' + response.status);
-    const data = await response.json();
-
-    const container = document.getElementById('pricesTable');
-    if (!Array.isArray(data) || data.length === 0) {
-      container.innerHTML = '<p>Нет станций или цен</p>';
-      return;
-    }
-
-    let html = '<table><tr><th>Станция</th><th>Сеть</th><th>Регион</th><th>Цена (ДТ-Л)</th><th></th></tr>';
-    data.forEach(item => {
-      const price = item.price;
-      const priceValue = price && !price.is_discount ? price.price_value : '';
-      const isDiscount = price ? price.is_discount : false;
-      const discountText = price ? price.discount_text : '';
-      html += `<tr>
-        <td>${item.name || ''}</td>
-        <td>${item.network || ''}</td>
-        <td>${item.region || ''}</td>
-        <td>
-          <input type="number" step="0.01" id="price_${item.station_id}" value="${priceValue}" ${isDiscount ? 'disabled' : ''}>
-          <label><input type="checkbox" id="discount_${item.station_id}" ${isDiscount ? 'checked' : ''} onchange="toggleDiscount('${item.station_id}')"> Скидка</label>
-          <input type="text" id="discountText_${item.station_id}" value="${discountText}" placeholder="Текст скидки" ${!isDiscount ? 'disabled' : ''}>
-        </td>
-        <td><button onclick="savePrice('${item.station_id}')">Сохранить</button></td>
-      </tr>`;
-    });
-    html += '</table>';
-    container.innerHTML = html;
-  } catch (e) {
-    alert(e.message);
-  }
-}
-
-// Переключение режима "скидка"
-function toggleDiscount(stationId) {
-  const isChecked = document.getElementById('discount_' + stationId).checked;
-  document.getElementById('price_' + stationId).disabled = isChecked;
-  document.getElementById('discountText_' + stationId).disabled = !isChecked;
-}
-
-// Сохранение цены для станции
-async function savePrice(stationId) {
-  const priceListId = document.getElementById('priceListForPrices').value;
-  const isDiscount = document.getElementById('discount_' + stationId).checked;
-  const priceValue = isDiscount ? null : parseFloat(document.getElementById('price_' + stationId).value);
-  const discountText = document.getElementById('discountText_' + stationId).value.trim();
-
-  try {
-    const response = await fetch(`${ADMIN_BASE_URL}/admin-update-price`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-key': adminKey
-      },
-      body: JSON.stringify({
-        station_id: stationId,
-        price_list_id: priceListId,
-        fuel_type: 'ДТ-Л',
-        price_value: priceValue,
-        is_discount: isDiscount,
-        discount_text: discountText
-      })
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Ошибка сохранения');
-    alert('Цена сохранена');
-  } catch (e) {
-    alert('Ошибка: ' + e.message);
-  }
-}
-        // ============================================================
-    // Шаг 6. Очистка базы данных
-    // ============================================================
-
-    // Собирает отмеченные чекбоксы и вызывает очистку.
-    async function clearSelected() {
-      const checkboxes = document.querySelectorAll('.clear-table:checked');
-      const tables = Array.from(checkboxes).map(cb => cb.value);
-
-      if (tables.length === 0) {
-        document.getElementById('clearStatus').innerHTML =
-          '<span style="color:#d32f2f;">Ничего не выбрано</span>';
-        return;
-      }
-
-      await callClear(tables);
-    }
-
-    // Полная очистка — пустой массив таблиц = всё.
-    async function clearAll() {
-      await callClear([]);
-    }
-
-    // Общая функция вызова admin-clear-data.
-    // tables: массив имён таблиц. Пустой массив = полная очистка.
-    async function callClear(tables) {
-      const statusDiv = document.getElementById('clearStatus');
-      statusDiv.innerHTML = 'Выполняется очистка...';
-
-      try {
-        const response = await fetch(`${ADMIN_BASE_URL}/admin-clear-data`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-admin-key': adminKey
-          },
-          // Если массив пустой — отправляем пустой объект, функция поймёт
-          // это как полную очистку.
-          body: JSON.stringify(
-            tables.length > 0 ? { tables } : {}
-          )
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || ('Ошибка: ' + response.status));
-        }
-
-        // Формируем красивый отчёт о том, что удалено.
-        let report = '<p style="color:#2e7d32; font-weight:bold;">Очистка выполнена.</p><ul>';
-        Object.keys(result.deleted || {}).forEach(table => {
-          report += `<li>${table}: удалено ${result.deleted[table]}</li>`;
-        });
-        report += '</ul>';
-        statusDiv.innerHTML = report;
-
-        // Снимаем галочки — чтобы не оставить отмеченными после очистки.
-        document.querySelectorAll('.clear-table').forEach(cb => cb.checked = false);
-
-        // Обновляем вкладки, где были данные. Ошибки не критичны.
-        try { await loadTokens(); } catch (_) {}
-        try { await loadNetworks(); } catch (_) {}
-        try { await loadStations(); } catch (_) {}
-        try { await loadPriceLists(); } catch (_) {}
-        try { await loadPriceListsForForm(); } catch (_) {}
-        try { await loadPriceListsForPrices(); } catch (_) {}
-        try { await loadRegions(); } catch (_) {}
-
-      } catch (e) {
-        statusDiv.innerHTML =
-          `<span style="color:#d32f2f;">Ошибка: ${e.message}</span>`;
-      }
-    }
-     // ============================================================
-    // Шаг 15. Аналитика. Заглушка для дублирования (шаг 13).
-    // ============================================================
-            // Удаляет карту клиента.
     async function deleteCard(token, clientName) {
       const name = clientName || 'без имени';
-      if (!confirm(`Удалить карту для клиента «${name}»?\n\nСсылка перестанет работать. Это действие необратимо.`)) {
-        return;
-      }
-
+      if (!confirm(`Удалить карту для клиента «${name}»?\n\nСсылка перестанет работать. Это действие необратимо.`)) return;
       try {
         const response = await fetch(`${ADMIN_BASE_URL}/admin-delete-token`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-admin-key': adminKey
-          },
+          headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
           body: JSON.stringify({ token })
         });
-
         const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Не удалось удалить');
-        }
-
+        if (!response.ok || !result.success) throw new Error(result.error || 'Не удалось удалить');
         alert(`Карта для клиента «${name}» удалена.`);
         loadTokens();
-      } catch (e) {
-        alert('Ошибка удаления: ' + e.message);
+      } catch (e) { alert('Ошибка удаления: ' + e.message); }
+    }
+
+    async function loadRegions() { return; } // Заглушка
+
+    // ============================================================
+    // ПАРСИНГ EXCEL (ПАРТНЁРСКАЯ СЕТЬ)
+    // ============================================================
+    let importData = null;
+
+    function handleExcelUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          if (!sheet) {
+            document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не найден лист</p>';
+            return;
+          }
+          const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          parseExcelData(json);
+        } catch (err) {
+          document.getElementById('importStatus').innerHTML = '<p style="color:red;">Ошибка чтения: ' + err.message + '</p>';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseExcelData(rows) {
+      let headerRowIdx = -1;
+      // Ищем строку с заголовками (содержит "регион", "название", "цена", "топливо")
+      for (let i = 0; i < Math.min(15, rows.length); i++) {
+        const rowStr = (rows[i] || []).join('|').toLowerCase();
+        if (rowStr.includes('регион') && rowStr.includes('название') && rowStr.includes('топливо')) {
+          headerRowIdx = i;
+          break;
+        }
+      }
+      if (headerRowIdx === -1) {
+        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не удалось найти заголовки таблицы.</p>';
+        return;
+      }
+
+      const headers = rows[headerRowIdx] || [];
+      let idxLReg = -1, idxLNet = -1, idxLPrice = -1, idxLFuel = -1;
+      let idxRReg = -1, idxRName = -1, idxRAddr = -1, idxRLat = -1, idxRLon = -1;
+      let regionCount = 0;
+
+      headers.forEach((h, i) => {
+        const s = String(h || '').toLowerCase().trim();
+        if (s === 'регион') {
+          if (regionCount === 0) idxLReg = i;
+          else if (regionCount === 1) idxRReg = i;
+          regionCount++;
+        }
+        if (s.includes('название') || s.includes('сеть')) idxLNet = i;
+        if (s.includes('цена с')) idxLPrice = i;
+        if (s.includes('топливо')) idxLFuel = i;
+        if (s.includes('наименование') || (s.includes('азс') && s !== 'название партнёрских азс')) idxRName = i;
+        if (s.includes('адрес')) idxRAddr = i;
+        if (s.includes('широта')) idxRLat = i;
+        if (s.includes('долгота')) idxRLon = i;
+      });
+
+      // Fallback, если нет явных "Широта"/"Долгота" (ищем по порядку после Адреса)
+      if (idxRLat === -1 && idxRAddr !== -1) { idxRLat = idxRAddr + 1; idxRLon = idxRAddr + 2; }
+
+      const networksMap = new Map(); // key: name|region -> { name, region, prices: [] }
+      const stations = [];
+
+      // Парсим левую таблицу (Сети и Цены)
+      let lastRegion = '';
+      let lastNet = '';
+      for (let i = headerRowIdx + 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        let region = idxLReg !== -1 ? String(row[idxLReg] || '').trim() : '';
+        let net = idxLNet !== -1 ? String(row[idxLNet] || '').trim() : '';
+        const price = idxLPrice !== -1 ? String(row[idxLPrice] || '').trim() : '';
+        const fuel = idxLFuel !== -1 ? String(row[idxLFuel] || '').trim() : '';
+
+        // Восстановление объединенных ячеек (Fill-down)
+        if (region) lastRegion = region; else region = lastRegion;
+        if (net) lastNet = net; else net = lastNet;
+
+        if (!net || !fuel) continue; // Пропускаем пустые или мусорные строки
+
+        const key = net.toLowerCase() + '|' + region.toLowerCase();
+        if (!networksMap.has(key)) {
+          networksMap.set(key, { name: net, region: region, prices: [] });
+        }
+        if (price) {
+          // Нормализация топлива (замена англ. M на русскую М на всякий случай)
+          const normalizedFuel = fuel.replace('M', 'М').trim();
+          networksMap.get(key).prices.push({ fuel_type: normalizedFuel, price: price });
+        }
+      }
+
+      const networks = Array.from(networksMap.values());
+
+      // Парсим правую таблицу (Станции)
+      let lastRRegion = '';
+      for (let i = headerRowIdx + 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        let region = idxRReg !== -1 ? String(row[idxRReg] || '').trim() : '';
+        const nameFull = idxRName !== -1 ? String(row[idxRName] || '').trim() : '';
+        const address = idxRAddr !== -1 ? String(row[idxRAddr] || '').trim() : '';
+        const latRaw = idxRLat !== -1 ? String(row[idxRLat] || '').trim() : '';
+        const lonRaw = idxRLon !== -1 ? String(row[idxRLon] || '').trim() : '';
+
+        if (!nameFull) continue;
+        if (region) lastRRegion = region; else region = lastRRegion;
+
+        // Очистка координат от пробелов и запятых
+        const lat = parseFloat(latRaw.replace(',', '.').replace(/\s/g, ''));
+        const lon = parseFloat(lonRaw.replace(',', '.').replace(/\s/g, ''));
+        if (isNaN(lat) || isNaN(lon)) continue;
+
+        let networkGuess = nameFull.split('(')[0].trim();
+        if (!networkGuess) networkGuess = nameFull;
+
+        stations.push({
+          region: region,
+          name: nameFull,
+          address: address,
+          lat: lat,
+          lon: lon,
+          network_name: networkGuess,
+          network_region: region,
+          matched: false,
+          networkOptions: networks // Передаем объекты сетей для выпадающего списка
+        });
+      }
+
+      // Проверка сопоставления
+      const uniqueNetworkNames = networks.map(n => n.name.toLowerCase());
+      stations.forEach(station => {
+        if (uniqueNetworkNames.includes(station.network_name.toLowerCase())) {
+          station.matched = true;
+        }
+      });
+
+      importData = { networks, stations };
+      displayImportSummary();
+    }
+
+    function displayImportSummary() {
+      const statusDiv = document.getElementById('importStatus');
+      const totalNetworks = importData.networks.length;
+      const totalStations = importData.stations.length;
+      const unmatched = importData.stations.filter(s => !s.matched);
+      
+      statusDiv.innerHTML = `
+        <p>Найдено уникальных сетей (с учетом регионов): ${totalNetworks}</p>
+        <p>Найдено станций: ${totalStations}</p>
+        <p>Несопоставлено станций: ${unmatched.length}</p>
+      `;
+
+      if (unmatched.length > 0) {
+        document.getElementById('mappingSection').style.display = 'block';
+        renderUnmatchedList(unmatched);
+      } else {
+        document.getElementById('mappingSection').style.display = 'none';
+        submitImport();
       }
     }
-        // ============================================================
-    // Импорт внешних сетей: Лукойл, Роснефть
+
+    function renderUnmatchedList(unmatched) {
+      const container = document.getElementById('unmatchedStations');
+      // Получаем уникальные имена сетей для выпадающего списка
+      const uniqueNets = [...new Set(importData.networks.map(n => n.name))];
+      
+      let html = '<table border="1" cellpadding="5"><tr><th>Станция</th><th>Адрес</th><th>Выберите сеть</th></tr>';
+      unmatched.forEach((station, idx) => {
+        html += `<tr>
+          <td>${station.name}</td>
+          <td>${station.address}</td>
+          <td>
+            <select id="select_${idx}">
+              <option value="">-- выбрать сеть --</option>
+              <option value="__delete__">УДАЛИТЬ</option>
+              ${uniqueNets.map(name => `<option value="${name}">${name}</option>`).join('')}
+              <option value="__new__">Создать новую...</option>
+            </select>
+            <input type="text" id="newNetwork_${idx}" placeholder="Название новой сети" style="display:none;">
+          </td>
+        </tr>`;
+      });
+      html += '</table>';
+      container.innerHTML = html;
+
+      unmatched.forEach((station, idx) => {
+        const select = document.getElementById(`select_${idx}`);
+        select.addEventListener('change', function() {
+          const newInput = document.getElementById(`newNetwork_${idx}`);
+          if (this.value === '__new__') {
+            newInput.style.display = 'inline';
+            newInput.focus();
+          } else {
+            newInput.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    function submitImport() {
+      // Обработка выбора для несопоставленных
+      if (importData.stations.some(s => !s.matched)) {
+        const unmatchedIndexes = [];
+        importData.stations.forEach((station, idx) => {
+          if (!station.matched) unmatchedIndexes.push(idx);
+        });
+        unmatchedIndexes.forEach((idx, i) => {
+          const select = document.getElementById(`select_${i}`);
+          if (select.value === '__delete__') {
+            importData.stations[idx].__delete = true;
+          } else {
+            importData.stations[idx].__delete = false;
+            if (select.value === '__new__') {
+              const newName = document.getElementById(`newNetwork_${i}`).value.trim();
+              importData.stations[idx].network_name = newName;
+              // Если такой сети нет в списке, добавляем пустую (без цен)
+              if (newName && !importData.networks.some(n => n.name.toLowerCase() === newName.toLowerCase())) {
+                importData.networks.push({ name: newName, region: importData.stations[idx].region, prices: [] });
+              }
+            } else if (select.value) {
+              importData.stations[idx].network_name = select.value;
+            }
+          }
+        });
+      }
+
+      const stationsToSend = importData.stations.filter(s => !s.__delete).map(s => ({
+        region: s.region,
+        name: s.name,
+        address: s.address,
+        lat: s.lat,
+        lon: s.lon,
+        network_name: s.network_name,
+        network_region: s.network_region
+      }));
+
+      const payload = {
+        networks: importData.networks,
+        stations: stationsToSend
+      };
+
+      document.getElementById('importStatus').innerHTML += '<p>Отправка на сервер...</p>';
+
+      fetch(`${ADMIN_BASE_URL}/admin-import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка: ${data.error}</p>`;
+        } else {
+          document.getElementById('importStatus').innerHTML += `<p style="color:green;">Импорт завершён! Станций: ${data.processedStations}, Сетей: ${data.processedNetworks}</p>`;
+        }
+      })
+      .catch(err => {
+        document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
+      });
+    }
+
     // ============================================================
+    // ВНЕШНИЕ СЕТИ (ЛУКОЙЛ, РОСНЕФТЬ)
+    // ============================================================
+    function switchImportTab(name, btn) {
+      document.querySelectorAll('.import-subtab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      document.getElementById('import-' + name).classList.add('active');
+    }
 
-
-    // ---------- Лукойл ----------
     function handleLukoilUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -1292,35 +899,25 @@ async function savePrice(stationId) {
           const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
           const stations = parseLukoilRows(rows);
           if (stations.length === 0) {
-            document.getElementById('lukoilStatus').innerHTML =
-              '<p style="color:red;">Не удалось найти станции. Проверьте формат файла.</p>';
+            document.getElementById('lukoilStatus').innerHTML = '<p style="color:red;">Не найдено станций.</p>';
             return;
           }
           submitExternalImport('Лукойл', stations);
         } catch (err) {
-          document.getElementById('lukoilStatus').innerHTML =
-            '<p style="color:red;">Ошибка чтения: ' + err.message + '</p>';
+          document.getElementById('lukoilStatus').innerHTML = '<p style="color:red;">Ошибка: ' + err.message + '</p>';
         }
       };
       reader.readAsArrayBuffer(file);
     }
 
-       function parseLukoilRows(rows) {
-      // 1. Ищем первую строку, где в какой-либо колонке есть "АЗС №".
+    function parseLukoilRows(rows) {
       let headerRowIdx = -1;
       for (let i = 0; i < Math.min(20, rows.length); i++) {
-        const row = rows[i] || [];
-        const rowStr = row.map(c => String(c || '').toLowerCase()).join('|');
-        if (rowStr.includes('азс №') || rowStr.includes('азс n')) {
-          headerRowIdx = i;
-          break;
-        }
+        const rowStr = (rows[i] || []).map(c => String(c || '').toLowerCase()).join('|');
+        if (rowStr.includes('азс №') || rowStr.includes('азс n')) { headerRowIdx = i; break; }
       }
       if (headerRowIdx === -1) return [];
 
-      // 2. Собираем карту колонок из нескольких строк,
-      // приоритет — конкретным названиям ("широта", "долгота")
-      // над общими ("координаты gps").
       const colMap = {};
       const priority = (name) => {
         if (name.includes('широта') || name.includes('долгота')) return 3;
@@ -1328,10 +925,8 @@ async function savePrice(stationId) {
         if (name.includes('координаты')) return 1;
         return 2;
       };
-
       for (let i = headerRowIdx; i < Math.min(headerRowIdx + 6, rows.length); i++) {
-        const row = rows[i] || [];
-        row.forEach((cell, idx) => {
+        (rows[i] || []).forEach((cell, idx) => {
           if (cell === null || cell === undefined) return;
           const s = String(cell).trim();
           if (!s || s.length > 100) return;
@@ -1343,7 +938,6 @@ async function savePrice(stationId) {
         });
       }
 
-      // 3. Ищем индексы нужных колонок.
       let idxStationNum = -1, idxAddress = -1, idxRegion = -1, idxLat = -1, idxLon = -1;
       for (const [i, entry] of Object.entries(colMap)) {
         const idx = parseInt(i, 10);
@@ -1354,27 +948,15 @@ async function savePrice(stationId) {
         if (idxLat === -1 && name.includes('широта')) idxLat = idx;
         if (idxLon === -1 && name.includes('долгота')) idxLon = idx;
       }
-
       if (idxStationNum === -1 || idxAddress === -1) return [];
 
-      // 4. Определяем начало данных: первая строка, где в колонке
-      // idxStationNum стоит число.
       let dataStart = -1;
       for (let i = headerRowIdx; i < rows.length; i++) {
-        const row = rows[i] || [];
-        const v = String(row[idxStationNum] || '').trim();
-        if (/^\d+$/.test(v)) {
-          dataStart = i;
-          break;
-        }
+        const v = String((rows[i] || [])[idxStationNum] || '').trim();
+        if (/^\d+$/.test(v)) { dataStart = i; break; }
       }
       if (dataStart === -1) return [];
 
-      // 5. Диагностика в консоль.
-      console.log('[Лукойл] headerRow:', headerRowIdx, 'dataStart:', dataStart);
-      console.log('[Лукойл] колонки:', { idxStationNum, idxAddress, idxRegion, idxLat, idxLon });
-
-      // 6. Читаем станции.
       const stations = [];
       for (let i = dataStart; i < rows.length; i++) {
         const row = rows[i] || [];
@@ -1382,7 +964,6 @@ async function savePrice(stationId) {
         const address = String(row[idxAddress] || '').trim();
         if (!stationNum && !address) continue;
         if (!address) continue;
-
         stations.push({
           station_number: stationNum,
           name: `АЗС №${stationNum} ЛУКОЙЛ`,
@@ -1394,7 +975,7 @@ async function savePrice(stationId) {
       }
       return stations;
     }
-    // ---------- Роснефть ----------
+
     function handleRosneftUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -1407,29 +988,22 @@ async function savePrice(stationId) {
           const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
           const stations = parseRosneftRows(rows);
           if (stations.length === 0) {
-            document.getElementById('rosneftStatus').innerHTML =
-              '<p style="color:red;">Не удалось найти станции. Проверьте формат файла.</p>';
+            document.getElementById('rosneftStatus').innerHTML = '<p style="color:red;">Не найдено станций.</p>';
             return;
           }
           submitExternalImport('Роснефть', stations);
         } catch (err) {
-          document.getElementById('rosneftStatus').innerHTML =
-            '<p style="color:red;">Ошибка чтения: ' + err.message + '</p>';
+          document.getElementById('rosneftStatus').innerHTML = '<p style="color:red;">Ошибка: ' + err.message + '</p>';
         }
       };
       reader.readAsArrayBuffer(file);
     }
 
-      function parseRosneftRows(rows) {
-      // Ищем заголовочную строку — там, где есть "Точка обслуживания" или "Адрес ТО".
+    function parseRosneftRows(rows) {
       let headerRowIdx = -1;
       for (let i = 0; i < Math.min(10, rows.length); i++) {
-        const row = rows[i] || [];
-        const rowStr = row.map(c => String(c || '').toLowerCase()).join('|');
-        if (rowStr.includes('точка обслуживания') || rowStr.includes('адрес то')) {
-          headerRowIdx = i;
-          break;
-        }
+        const rowStr = (rows[i] || []).map(c => String(c || '').toLowerCase()).join('|');
+        if (rowStr.includes('точка обслуживания') || rowStr.includes('адрес то')) { headerRowIdx = i; break; }
       }
       if (headerRowIdx === -1) return [];
 
@@ -1442,7 +1016,6 @@ async function savePrice(stationId) {
         if (idxLon === -1 && name.includes('долгота')) idxLon = i;
         if (idxLat === -1 && name.includes('широта')) idxLat = i;
       });
-
       if (idxName === -1 || idxLon === -1 || idxLat === -1) return [];
 
       const stations = [];
@@ -1450,13 +1023,9 @@ async function savePrice(stationId) {
         const row = rows[i] || [];
         const rawName = String(row[idxName] || '').trim();
         if (!rawName) continue;
-
-        // Убираем служебный код в квадратных скобках в начале названия.
-        // Например: "[426,1,213] АЗК №3108 РОСНЕФТЬ НПО" → "АЗК №3108 РОСНЕФТЬ НПО"
         const name = rawName.replace(/^\s*\[[^\]]*\]\s*/, '').trim();
-
         stations.push({
-          name: name || rawName, // если после очистки пусто — оставляем исходное
+          name: name || rawName,
           address: idxAddress !== -1 ? String(row[idxAddress] || '').trim() : '',
           lon: row[idxLon],
           lat: row[idxLat],
@@ -1465,44 +1034,140 @@ async function savePrice(stationId) {
       return stations;
     }
 
-    // ---------- Отправка на сервер ----------
     function submitExternalImport(network, stations) {
       const statusId = network === 'Лукойл' ? 'lukoilStatus' : 'rosneftStatus';
       const statusDiv = document.getElementById(statusId);
-      statusDiv.innerHTML = `<p>Отправка на сервер... Найдено станций: ${stations.length}</p>`;
-
+      statusDiv.innerHTML = `<p>Отправка на сервер... Найдено: ${stations.length}</p>`;
       fetch(`${ADMIN_BASE_URL}/admin-import-external`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-key': adminKey
-        },
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
         body: JSON.stringify({ network, stations })
       })
       .then(res => res.json())
       .then(data => {
-        if (data.error) {
-          statusDiv.innerHTML = `<p style="color:red;">Ошибка: ${data.error}</p>`;
-        } else {
-          statusDiv.innerHTML =
-            `<p style="color:green;">Импорт завершён. Загружено станций: ${data.processedStations}` +
-            (data.skipped ? `, пропущено (без координат): ${data.skipped}` : '') +
-            `</p>`;
-        }
+        if (data.error) statusDiv.innerHTML = `<p style="color:red;">Ошибка: ${data.error}</p>`;
+        else statusDiv.innerHTML = `<p style="color:green;">Импорт завершён. Загружено: ${data.processedStations}, пропущено: ${data.skipped || 0}</p>`;
       })
-      .catch(err => {
-        statusDiv.innerHTML = `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
-      });
+      .catch(err => { statusDiv.innerHTML = `<p style="color:red;">Ошибка сети: ${err.message}</p>`; });
     }
-        // ============================================================
-    // Переключатель под-вкладок импорта
-    // ============================================================
 
-    function switchImportTab(name, btn) {
-      document.querySelectorAll('.import-subtab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      document.getElementById('import-' + name).classList.add('active');
+    // ============================================================
+    // ЦЕНЫ (РУЧНОЕ РЕДАКТИРОВАНИЕ)
+    // ============================================================
+    async function loadPriceListsForPrices() {
+      try {
+        const data = await fetchAdmin('price_lists');
+        const select = document.getElementById('priceListForPrices');
+        select.innerHTML = '';
+        if (Array.isArray(data)) {
+          data.forEach(pl => {
+            const opt = document.createElement('option');
+            opt.value = pl.id;
+            opt.textContent = pl.name;
+            select.appendChild(opt);
+          });
+          if (data.length > 0) loadPricesForEditing();
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadPricesForEditing() {
+      const priceListId = document.getElementById('priceListForPrices').value;
+      if (!priceListId) return;
+      try {
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-data?type=prices_by_list&price_list_id=${priceListId}`, {
+          headers: { 'x-admin-key': adminKey }
+        });
+        if (!response.ok) throw new Error('Ошибка загрузки: ' + response.status);
+        const data = await response.json();
+        const container = document.getElementById('pricesTable');
+        if (!Array.isArray(data) || data.length === 0) {
+          container.innerHTML = '<p>Нет станций или цен</p>';
+          return;
+        }
+        let html = '<table><tr><th>Станция</th><th>Сеть</th><th>Регион</th><th>Цена</th><th></th></tr>';
+        data.forEach(item => {
+          const price = item.price;
+          const priceValue = price && !price.is_discount ? price.price_value : '';
+          const isDiscount = price ? price.is_discount : false;
+          const discountText = price ? price.discount_text : '';
+          html += `<tr>
+            <td>${item.name || ''}</td>
+            <td>${item.network || ''}</td>
+            <td>${item.region || ''}</td>
+            <td>
+              <input type="number" step="0.01" id="price_${item.station_id}" value="${priceValue}" ${isDiscount ? 'disabled' : ''}>
+              <label><input type="checkbox" id="discount_${item.station_id}" ${isDiscount ? 'checked' : ''} onchange="toggleDiscount('${item.station_id}')"> Скидка</label>
+              <input type="text" id="discountText_${item.station_id}" value="${discountText}" placeholder="Текст скидки" ${!isDiscount ? 'disabled' : ''}>
+            </td>
+            <td><button onclick="savePrice('${item.station_id}')">Сохранить</button></td>
+          </tr>`;
+        });
+        html += '</table>';
+        container.innerHTML = html;
+      } catch (e) { alert(e.message); }
+    }
+
+    function toggleDiscount(stationId) {
+      const isChecked = document.getElementById('discount_' + stationId).checked;
+      document.getElementById('price_' + stationId).disabled = isChecked;
+      document.getElementById('discountText_' + stationId).disabled = !isChecked;
+    }
+
+    async function savePrice(stationId) {
+      const priceListId = document.getElementById('priceListForPrices').value;
+      const isDiscount = document.getElementById('discount_' + stationId).checked;
+      const priceValue = isDiscount ? null : parseFloat(document.getElementById('price_' + stationId).value);
+      const discountText = document.getElementById('discountText_' + stationId).value.trim();
+      try {
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-update-price`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+          body: JSON.stringify({ station_id: stationId, price_list_id: priceListId, fuel_type: 'ДТ-Л', price_value: priceValue, is_discount: isDiscount, discount_text: discountText })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Ошибка сохранения');
+        alert('Цена сохранена');
+      } catch (e) { alert('Ошибка: ' + e.message); }
+    }
+
+    // ============================================================
+    // ОЧИСТКА
+    // ============================================================
+    async function clearSelected() {
+      const checkboxes = document.querySelectorAll('.clear-table:checked');
+      const tables = Array.from(checkboxes).map(cb => cb.value);
+      if (tables.length === 0) {
+        document.getElementById('clearStatus').innerHTML = '<span style="color:#d32f2f;">Ничего не выбрано</span>';
+        return;
+      }
+      await callClear(tables);
+    }
+
+    async function clearAll() { await callClear([]); }
+
+    async function callClear(tables) {
+      const statusDiv = document.getElementById('clearStatus');
+      statusDiv.innerHTML = 'Выполняется очистка...';
+      try {
+        const response = await fetch(`${ADMIN_BASE_URL}/admin-clear-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+          body: JSON.stringify(tables.length > 0 ? { tables } : {})
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || ('Ошибка: ' + response.status));
+        let report = '<p style="color:#2e7d32; font-weight:bold;">Очистка выполнена.</p><ul>';
+        Object.keys(result.deleted || {}).forEach(table => { report += `<li>${table}: удалено ${result.deleted[table]}</li>`; });
+        report += '</ul>';
+        statusDiv.innerHTML = report;
+        document.querySelectorAll('.clear-table').forEach(cb => cb.checked = false);
+        try { await loadTokens(); } catch (_) {}
+        try { await loadNetworks(); } catch (_) {}
+        try { await loadStations(); } catch (_) {}
+        try { await loadPriceLists(); } catch (_) {}
+        try { await loadPriceListsForPrices(); } catch (_) {}
+      } catch (e) { statusDiv.innerHTML = `<span style="color:#d32f2f;">Ошибка: ${e.message}</span>`; }
     }
   </script>
 </body>
