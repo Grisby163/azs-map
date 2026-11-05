@@ -661,7 +661,7 @@
     }).addTo(map);
 
     let allStations = [];
-    let currentFuel = 'ДТ-Л';
+    let currentFuel = null;
     let markersLayer = L.layerGroup().addTo(map);
     let routeLine = null;
     let filteredStations = [];
@@ -709,17 +709,38 @@
           });
         }
       });
-      
-      let fuels = Array.from(fuelsSet).sort();
-      if (fuels.length === 0) fuels.push('ДТ-Л'); 
 
-      if (!fuels.includes(currentFuel)) {
-        currentFuel = fuels.includes('ДТ-Л') ? 'ДТ-Л' : fuels[0];
+      // Считаем частоту встречаемости каждого топлива, чтобы самое частое шло первым.
+      const fuelCounts = {};
+      allStations.forEach(station => {
+        if (station.prices) {
+          const seen = new Set();
+          station.prices.forEach(p => {
+            if (p.fuel_type && !seen.has(p.fuel_type)) {
+              seen.add(p.fuel_type);
+              fuelCounts[p.fuel_type] = (fuelCounts[p.fuel_type] || 0) + 1;
+            }
+          });
+        }
+      });
+
+      let fuels = Array.from(fuelsSet).sort((a, b) => {
+        const ca = fuelCounts[a] || 0;
+        const cb = fuelCounts[b] || 0;
+        if (cb !== ca) return cb - ca; // по частоте убыванию
+        return a.localeCompare(b);     // при равенстве — по алфавиту
+      });
+
+      if (fuels.length === 0) fuels.push('ДТ-Л');
+
+      // currentFuel ещё не выбран или его больше нет — берём первое из списка.
+      if (!currentFuel || !fuels.includes(currentFuel)) {
+        currentFuel = fuels[0];
       }
 
       const dropdown = document.getElementById('fuel-filter-dropdown');
       if (!dropdown) return;
-      
+
       dropdown.innerHTML = '';
       fuels.forEach(fuel => {
         const btn = document.createElement('button');
@@ -729,13 +750,13 @@
         btn.onclick = () => selectFuel(fuel);
         dropdown.appendChild(btn);
       });
-      
+
       updateFuelFilterLabel();
     }
 
     function updateFuelFilterLabel() {
       const label = document.getElementById('fuel-filter-label');
-      if (label) label.textContent = 'Фильтр · ' + currentFuel;
+      if (label) label.textContent = 'Фильтр · ' + (currentFuel || '—');
 
       document.querySelectorAll('.fuel-option').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.fuel === currentFuel);
@@ -783,6 +804,7 @@
     }
 
     function getPriceForFuel(station, fuel) {
+      if (!fuel) return null;
       if (!station.prices || station.prices.length === 0) return null;
       return station.prices.find(p => p.fuel_type === fuel) || null;
     }
