@@ -5,13 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Карта АЗС</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <style>
-    /* ============================================================
-       Шаг 16.3. Тёплая палитра клиентской карты.
-       ============================================================ */
-  
+  <style>
     :root {
       --bg: #FAF6F1;
       --surface: #FFFFFF;
@@ -43,11 +39,12 @@
     }
     #map { height: 100vh; width: 100%; }
 
-      .leaflet-control-attribution {
-  display: none !important;
-   }
+    .leaflet-control-attribution {
+      display: none !important;
+    }
+    
     /* ---------- Верхняя панель управления ---------- */
-        .control-panel {
+    .control-panel {
       position: absolute;
       top: 14px;
       left: 50%;
@@ -67,8 +64,9 @@
       align-items: center;
       max-width: calc(100% - 28px);
     }
+    
     /* ---------- Вкладки «Вся сеть / Мой маршрут» ---------- */
-        .view-tabs {
+    .view-tabs {
       display: flex;
       gap: 4px;
       padding: 3px;
@@ -81,7 +79,7 @@
       -webkit-overflow-scrolling: touch;
       max-width: 100%;
     }
-          /* Каждый блок в панели — на всю ширину */
+    
     .control-panel > * {
       width: 100%;
       flex-basis: auto;
@@ -89,12 +87,6 @@
     .control-panel #map-title {
       text-align: center;
       margin-bottom: 2px;
-    }
-    .control-panel #fuel-panel {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      justify-content: center;
     }
     .control-panel .routes-switcher,
     .control-panel .view-tabs {
@@ -123,11 +115,9 @@
       color: #fff;
       box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
     }
-    @media (max-width: 720px) {
-      .view-tab { padding: 6px 12px; font-size: 12px; }
-    }
-        /* ---------- Переключатель маршрутов ---------- */
-        .routes-switcher {
+    
+    /* ---------- Переключатель маршрутов ---------- */
+    .routes-switcher {
       display: flex;
       gap: 4px;
       padding: 3px;
@@ -141,7 +131,7 @@
       max-width: 100%;
     }
     .routes-switcher::-webkit-scrollbar { display: none; }
-        .route-switch-btn {
+    .route-switch-btn {
       padding: 7px 14px;
       border-radius: 999px;
       border: none;
@@ -154,8 +144,8 @@
       transition: background .18s, color .18s, box-shadow .18s;
       white-space: nowrap;
       flex-shrink: 0;
-      max-width: 180px;             /* ограничиваем ширину */
-      overflow: hidden;             /* длинные названия — с многоточием */
+      max-width: 180px;
+      overflow: hidden;
       text-overflow: ellipsis;
     }
     .route-switch-btn:hover {
@@ -167,10 +157,8 @@
       color: #fff;
       box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
     }
-    @media (max-width: 720px) {
-      .route-switch-btn { padding: 6px 10px; font-size: 12px; }
-    }
-          /* ---------- Фильтр топлива: кнопка и выпадающая плашка ---------- */
+
+    /* ---------- Фильтр топлива: кнопка и выпадающая плашка ---------- */
     .fuel-filter-btn {
       display: inline-flex;
       align-items: center;
@@ -252,39 +240,6 @@
       color: #fff;
     }
 
-    @media (max-width: 720px) {
-      .fuel-filter-btn {
-        padding: 9px 14px;
-        font-size: 13px;
-        min-height: 38px;
-      }
-      .fuel-filter-dropdown {
-        min-width: 120px;
-      }
-    }
-      /* Кнопки топлива */
-    .fuel-btn, .route-btn {
-      padding: 8px 16px;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text);
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      font-family: inherit;
-      transition: background .18s, color .18s, transform .12s, box-shadow .18s;
-    }
-    .fuel-btn:hover, .route-btn:hover {
-      background: rgba(232, 114, 12, 0.10);
-      color: var(--accent);
-    }
-    .fuel-btn.active, .route-btn.active {
-      background: var(--gradient-accent);
-      color: #fff;
-      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.32);
-    }
-
     /* Заголовок карты в панели */
     #map-title {
       color: var(--text) !important;
@@ -308,19 +263,14 @@
     .leaflet-popup-tip {
       box-shadow: none !important;
     }
-          /* ---------- Звезда для лучшей цены ---------- */
+
+    /* ---------- Звезда для лучшей цены ---------- */
     .best-price-marker {
       font-size: 28px;
       line-height: 28px;
       text-align: center;
       color: #16A34A;
-      text-shadow:
-        0 0 0 #fff,
-        1px 1px 0 #fff,
-        -1px -1px 0 #fff,
-        1px -1px 0 #fff,
-        -1px 1px 0 #fff,
-        0 2px 6px rgba(0,0,0,0.35);
+      text-shadow: 0 0 0 #fff, 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 0 2px 6px rgba(0,0,0,0.35);
       font-family: Arial, sans-serif;
       font-weight: 900;
       pointer-events: auto;
@@ -328,7 +278,8 @@
       transition: transform .15s;
     }
     .best-price-marker:hover { transform: scale(1.15); }
-         /* ---------- Плашка топ-3 сетей (вкладка «Вся сеть», только ПК) ---------- */
+
+    /* ---------- Плашка топ-3 сетей ---------- */
     #top-networks-bar {
       position: fixed;
       left: 50%;
@@ -455,10 +406,10 @@
       box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
     }
 
-    /* На мобильной плашки нет — там работает нижняя панель сетей. */
     @media (max-width: 820px) {
       #top-networks-bar { display: none !important; }
     }
+
     /* ---------- Нижняя строка «Лучшая цена» ---------- */
     #best-price-bar {
       position: fixed;
@@ -481,24 +432,10 @@
       max-width: calc(100% - 28px);
     }
     #best-price-bar.visible { display: flex; }
-    #best-price-bar .star {
-      color: #16A34A;
-      font-size: 18px;
-      line-height: 1;
-    }
-    #best-price-bar .label {
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-    #best-price-bar .value {
-      color: #16A34A;
-      font-weight: 700;
-      font-size: 16px;
-    }
-    #best-price-bar .network {
-      color: var(--text);
-      font-weight: 600;
-    }
+    #best-price-bar .star { color: #16A34A; font-size: 18px; line-height: 1; }
+    #best-price-bar .label { color: var(--text-muted); font-weight: 500; }
+    #best-price-bar .value { color: #16A34A; font-weight: 700; font-size: 16px; }
+    #best-price-bar .network { color: var(--text); font-weight: 600; }
     #best-price-bar .show-btn {
       padding: 7px 14px;
       background: var(--gradient-accent);
@@ -518,657 +455,154 @@
       box-shadow: 0 6px 14px rgba(232, 114, 12, 0.4);
     }
 
-    @media (max-width: 720px) {
-      #best-price-bar {
-        font-size: 12.5px;
-        padding: 8px 12px;
-        gap: 8px;
-        bottom: 10px;
-      }
-      #best-price-bar .value { font-size: 14px; }
-      #best-price-bar .show-btn { padding: 6px 10px; font-size: 12px; }
-    }
-        .popup-price {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--accent);
-      margin-top: 8px;
-      display: block;
-    }
-    .popup-address-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
+    .popup-price { font-size: 17px; font-weight: 700; color: var(--accent); margin-top: 8px; display: block; }
+    .popup-address-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
     .copy-addr-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 2px 6px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      font-family: inherit;
-      line-height: 1;
-      margin: 0;
-      box-shadow: none;
-      transition: background .15s, color .15s, border-color .15s;
-      flex-shrink: 0;
+      background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+      padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 12px;
+      font-family: inherit; line-height: 1; margin: 0; box-shadow: none;
+      transition: background .15s, color .15s, border-color .15s; flex-shrink: 0;
     }
-    .copy-addr-btn:hover {
-      background: var(--warn-bg);
-      color: var(--accent);
-      border-color: var(--accent);
-      box-shadow: none;
-      transform: none;
-    }
+    .copy-addr-btn:hover { background: var(--warn-bg); color: var(--accent); border-color: var(--accent); box-shadow: none; transform: none; }
+    .popup-region { margin-top: 8px; font-size: 12px; color: var(--text-muted); }
+    .popup-discount { margin-top: 8px; color: var(--danger); font-weight: 700; }
+    .popup-no-price { margin-top: 8px; color: var(--text-muted); font-style: italic; }
+    .market-info { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .saving-info { font-size: 13px; color: var(--success); font-weight: 700; margin-top: 4px; background: #ECFDF5; padding: 3px 8px; border-radius: 6px; display: inline-block; }
 
-    .popup-region {
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .popup-discount {
-      margin-top: 8px;
-      color: var(--danger);
-      font-weight: 700;
-    }
-
-    .popup-no-price {
-      margin-top: 8px;
-      color: var(--text-muted);
-      font-style: italic;
-    }
-    .market-info {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 6px;
-    }
-    .saving-info {
-      font-size: 13px;
-      color: var(--success);
-      font-weight: 700;
-      margin-top: 4px;
-      background: #ECFDF5;
-      padding: 3px 8px;
-      border-radius: 6px;
-      display: inline-block;
-    }
     /* ---------- Раскрывающиеся сети и сворачивание панели ---------- */
-    .network-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .network-header h4 {
-      margin: 0;
-    }
+    .network-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .network-header h4 { margin: 0; }
     .panel-toggle {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      display: none; /* видно только на мобильной */
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 16px;
-      padding: 0;
-      line-height: 1;
-      transition: background .15s, color .15s;
+      background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+      border-radius: 50%; width: 30px; height: 30px; display: none; align-items: center;
+      justify-content: center; cursor: pointer; font-size: 16px; padding: 0;
+      line-height: 1; transition: background .15s, color .15s;
     }
-    .panel-toggle:hover {
-      background: var(--warn-bg);
-      color: var(--accent);
-    }
-
-    /* Раскрывающаяся сеть */
-    .network-item-clickable {
-      cursor: pointer;
-      user-select: none;
-    }
-    .network-item-clickable .network-arrow {
-      display: inline-block;
-      margin-left: 6px;
-      transition: transform .2s;
-      color: var(--text-muted);
-      font-size: 10px;
-    }
-    .network-item-clickable.expanded .network-arrow {
-      transform: rotate(90deg);
-    }
-    .network-item.cheapest {
-      background: linear-gradient(135deg, rgba(22, 163, 74, 0.15) 0%, rgba(22, 163, 74, 0.06) 100%);
-      border: 1px solid rgba(22, 163, 74, 0.35);
-      border-radius: 8px;
-      margin: 4px 0;
-      padding-left: 8px;
-      padding-right: 8px;
-    }
-    .network-item.cheapest .network-price {
-      color: #16A34A;
-      font-size: 15px;
-    }
-    .network-price {
-      font-weight: 700;
-      color: var(--text);
-    }
-    .network-region {
-      display: block;
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    /* Список АЗС внутри сети */
-    .network-stations {
-      display: none;
-      padding: 4px 8px 8px 24px;
-      background: rgba(250, 246, 241, 0.5);
-      border-radius: 8px;
-      margin-top: 2px;
-    }
-    .network-stations.expanded {
-      display: block;
-    }
-    .station-row {
-      padding: 8px 6px;
-      border-bottom: 1px solid rgba(232, 225, 216, 0.6);
-      cursor: pointer;
-      transition: background .15s;
-      border-radius: 6px;
-    }
-    .station-row:last-child {
-      border-bottom: none;
-    }
-    .station-row:hover {
-      background: rgba(255, 255, 255, 0.8);
-    }
-    .station-row-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .station-row-addr {
-      font-size: 11.5px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-    .station-row-price {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--accent);
-      margin-top: 2px;
-    }
+    .panel-toggle:hover { background: var(--warn-bg); color: var(--accent); }
+    .network-item-clickable { cursor: pointer; user-select: none; }
+    .network-item-clickable .network-arrow { display: inline-block; margin-left: 6px; transition: transform .2s; color: var(--text-muted); font-size: 10px; }
+    .network-item-clickable.expanded .network-arrow { transform: rotate(90deg); }
+    .network-item.cheapest { background: linear-gradient(135deg, rgba(22, 163, 74, 0.15) 0%, rgba(22, 163, 74, 0.06) 100%); border: 1px solid rgba(22, 163, 74, 0.35); border-radius: 8px; margin: 4px 0; padding-left: 8px; padding-right: 8px; }
+    .network-item.cheapest .network-price { color: #16A34A; font-size: 15px; }
+    .network-price { font-weight: 700; color: var(--text); }
+    .network-region { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .network-stations { display: none; padding: 4px 8px 8px 24px; background: rgba(250, 246, 241, 0.5); border-radius: 8px; margin-top: 2px; }
+    .network-stations.expanded { display: block; }
+    .station-row { padding: 8px 6px; border-bottom: 1px solid rgba(232, 225, 216, 0.6); cursor: pointer; transition: background .15s; border-radius: 6px; }
+    .station-row:last-child { border-bottom: none; }
+    .station-row:hover { background: rgba(255, 255, 255, 0.8); }
+    .station-row-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .station-row-addr { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+    .station-row-price { font-size: 12px; font-weight: 700; color: var(--accent); margin-top: 2px; }
 
     /* Свёрнутая панель на мобильной */
     @media (max-width: 820px) {
-      .panel-toggle {
-        display: inline-flex;
-      }
-      .network-panel.collapsed {
-        max-height: 52px;
-        overflow: hidden;
-      }
-      .network-panel.collapsed .network-header {
-        margin-bottom: 0;
-      }
-      .network-panel.collapsed .network-list,
-      .network-panel.collapsed .download-btn {
-        display: none;
-      }
-      .network-panel.collapsed .panel-toggle {
-        transform: rotate(180deg);
-      }
+      .panel-toggle { display: inline-flex; }
+      .network-panel.collapsed { max-height: 52px; overflow: hidden; }
+      .network-panel.collapsed .network-header { margin-bottom: 0; }
+      .network-panel.collapsed .network-list, .network-panel.collapsed .download-btn { display: none; }
+      .network-panel.collapsed .panel-toggle { transform: rotate(180deg); }
     }
     /* ---------- Правая панель сетей ---------- */
     .network-panel {
-      position: absolute;
-      top: 50%;
-      right: 14px;
-      transform: translateY(-50%);
-      z-index: 1001;
-      background: var(--surface-glass);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      padding: 16px;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-card);
-      border: 1px solid var(--border);
-      max-width: 280px;
-      display: none;
-      font-size: 13px;
+      position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+      z-index: 1001; background: var(--surface-glass); backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px); padding: 16px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card); border: 1px solid var(--border); max-width: 280px;
+      display: none; font-size: 13px;
     }
-    .network-panel h4 {
-      margin: 0 0 10px;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: -0.01em;
-    }
-    .network-list {
-      max-height: 320px;
-      overflow-y: auto;
-      scrollbar-width: thin;
-    }
+    .network-panel h4 { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+    .network-list { max-height: 320px; overflow-y: auto; scrollbar-width: thin; }
     .network-list::-webkit-scrollbar { width: 6px; }
-    .network-list::-webkit-scrollbar-thumb {
-      background: #D6CFC7; border-radius: 3px;
-    }
-    .network-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 6px;
-      border-bottom: 1px solid #F1EBE3;
-      align-items: center;
-      gap: 8px;
-    }
+    .network-list::-webkit-scrollbar-thumb { background: #D6CFC7; border-radius: 3px; }
+    .network-item { display: flex; justify-content: space-between; padding: 8px 6px; border-bottom: 1px solid #F1EBE3; align-items: center; gap: 8px; }
     .network-item:last-child { border-bottom: none; }
-    .network-item.opt {
-      background: rgba(236, 253, 245, 0.7);
-      border-radius: 6px;
-      margin: 2px 0;
-      border-bottom: none;
-    }
-    .network-item.best {
-      background: rgba(254, 243, 226, 0.7);
-      border-radius: 6px;
-      margin: 2px 0;
-      border-bottom: none;
-    }
-    .dot-indicator {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 8px;
-      display: inline-block;
-      vertical-align: middle;
-      border: 2px solid #fff;
-      box-shadow: 0 0 0 1px rgba(31,27,22,0.08);
-    }
+    .network-item.opt { background: rgba(236, 253, 245, 0.7); border-radius: 6px; margin: 2px 0; border-bottom: none; }
+    .network-item.best { background: rgba(254, 243, 226, 0.7); border-radius: 6px; margin: 2px 0; border-bottom: none; }
+    .dot-indicator { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; display: inline-block; vertical-align: middle; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(31,27,22,0.08); }
 
     /* Кнопка Excel */
     .download-btn {
-      display: block;
-      margin-top: 14px;
-      padding: 10px 14px;
-      background: var(--gradient-accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      width: 100%;
-      font-size: 13.5px;
-      font-weight: 700;
-      font-family: inherit;
-      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.28);
-      transition: transform .12s, box-shadow .18s, filter .18s;
+      display: block; margin-top: 14px; padding: 10px 14px; background: var(--gradient-accent);
+      color: #fff; border: none; border-radius: var(--radius-sm); cursor: pointer;
+      width: 100%; font-size: 13.5px; font-weight: 700; font-family: inherit;
+      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.28); transition: transform .12s, box-shadow .18s, filter .18s;
     }
-    .download-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(232, 114, 12, 0.35);
-      filter: brightness(1.03);
-    }
+    .download-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(232, 114, 12, 0.35); filter: brightness(1.03); }
 
     /* ---------- Приветствие ---------- */
-    .greeting-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(31, 27, 22, 0.55);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .greeting-modal {
-      background: var(--surface);
-      padding: 32px 28px;
-      border-radius: var(--radius-lg);
-      text-align: center;
-      max-width: 420px;
-      box-shadow: var(--shadow-card);
-      border: 1px solid var(--border);
-      animation: popIn .28s ease;
-    }
-    @keyframes popIn {
-      from { opacity: 0; transform: scale(0.94); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-    .greeting-modal h2 {
-      margin: 10px 0 12px;
-      font-size: 20px;
-      color: var(--text);
-      letter-spacing: -0.01em;
-    }
-    .greeting-modal p {
-      margin: 0 0 20px;
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.55;
-    }
-    .greeting-modal button {
-      margin-top: 4px;
-      padding: 11px 28px;
-      background: var(--gradient-accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
-      transition: transform .12s, box-shadow .18s, filter .18s;
-      font-family: inherit;
-    }
-    .greeting-modal button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(232, 114, 12, 0.38);
-      filter: brightness(1.03);
-    }
-    .greeting-banner {
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      z-index: 10001;
-      background: var(--text);
-      color: #F5F0E8;
-      padding: 12px 18px;
-      border-radius: var(--radius-md);
-      font-size: 13px;
-      font-weight: 500;
-      box-shadow: var(--shadow-card);
-      display: none;
-      max-width: 320px;
-    }
+    .greeting-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(31, 27, 22, 0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .greeting-modal { background: var(--surface); padding: 32px 28px; border-radius: var(--radius-lg); text-align: center; max-width: 420px; box-shadow: var(--shadow-card); border: 1px solid var(--border); animation: popIn .28s ease; }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+    .greeting-modal h2 { margin: 10px 0 12px; font-size: 20px; color: var(--text); letter-spacing: -0.01em; }
+    .greeting-modal p { margin: 0 0 20px; font-size: 14px; color: var(--text-muted); line-height: 1.55; }
+    .greeting-modal button { margin-top: 4px; padding: 11px 28px; background: var(--gradient-accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3); transition: transform .12s, box-shadow .18s, filter .18s; font-family: inherit; }
+    .greeting-modal button:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(232, 114, 12, 0.38); filter: brightness(1.03); }
+    .greeting-banner { position: fixed; top: 14px; right: 14px; z-index: 10001; background: var(--text); color: #F5F0E8; padding: 12px 18px; border-radius: var(--radius-md); font-size: 13px; font-weight: 500; box-shadow: var(--shadow-card); display: none; max-width: 320px; }
 
     /* ---------- Ссылка на Яндекс.Карты ---------- */
-    #yandex-link-container a {
-      background: var(--surface-glass) !important;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      padding: 10px 16px !important;
-      border-radius: 999px !important;
-      box-shadow: var(--shadow-soft) !important;
-      border: 1px solid var(--border);
-      color: var(--text) !important;
-      font-weight: 600;
-      font-size: 13px;
-      text-decoration: none !important;
-      transition: transform .12s, box-shadow .18s, color .18s;
-    }
-    #yandex-link-container a:hover {
-      color: var(--accent) !important;
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-card) !important;
-    }
+    #yandex-link-container a { background: var(--surface-glass) !important; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 10px 16px !important; border-radius: 999px !important; box-shadow: var(--shadow-soft) !important; border: 1px solid var(--border); color: var(--text) !important; font-weight: 600; font-size: 13px; text-decoration: none !important; transition: transform .12s, box-shadow .18s, color .18s; }
+    #yandex-link-container a:hover { color: var(--accent) !important; transform: translateY(-1px); box-shadow: var(--shadow-card) !important; }
 
     /* ---------- Адаптивность ---------- */
-        /* ============================================================
-       Шаг 16.4. Мобильная адаптация
-       ============================================================ */
     @media (max-width: 820px) {
-      /* Верхняя панель — компактная, кнопки горизонтальным скроллом. */
-                .control-panel {
-        padding: 8px 10px;
-        gap: 5px;
-        max-width: calc(100% - 16px);
-        top: 8px;
-        border-radius: var(--radius-md);
-      }
-      #fuel-panel {
-        display: flex;
-        gap: 4px;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-        padding: 2px;
-        flex: 1;
-      }
+      .control-panel { padding: 8px 10px; gap: 5px; max-width: calc(100% - 16px); top: 8px; border-radius: var(--radius-md); }
+      #fuel-panel { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 2px; flex: 1; }
       #fuel-panel::-webkit-scrollbar { display: none; }
-
-      .fuel-btn, .route-btn {
-        padding: 9px 14px;
-        font-size: 13px;
-        min-height: 38px;
-        flex-shrink: 0;
-        min-width: 54px;
-      }
-
-      #map-title {
-        font-size: 12px !important;
-        flex-basis: 100%;
-        text-align: center;
-        padding: 0 4px 2px;
-        line-height: 1.3;
-        color: var(--text-muted) !important;
-      }
-
-      /* Popup крупнее — читать удобно. */
-      .leaflet-popup-content {
-        margin: 14px 16px !important;
-        font-size: 14.5px !important;
-        line-height: 1.6 !important;
-      }
+      .fuel-btn, .route-btn { padding: 9px 14px; font-size: 13px; min-height: 38px; flex-shrink: 0; min-width: 54px; }
+      #map-title { font-size: 12px !important; flex-basis: 100%; text-align: center; padding: 0 4px 2px; line-height: 1.3; color: var(--text-muted) !important; }
+      .leaflet-popup-content { margin: 14px 16px !important; font-size: 14.5px !important; line-height: 1.6 !important; }
       .popup-price { font-size: 20px; }
-      .copy-addr-btn {
-        padding: 6px 10px;
-        font-size: 14px;
-        min-height: 32px;
-        min-width: 32px;
-      }
-
-      /* Панель сетей — выдвигается снизу, скруглённая сверху. */
-           .network-panel {
-        top: auto;
-        bottom: 0;
-        right: 0;
-        left: 0;
-        transform: none;
-        max-width: none;
-        max-height: 50vh;
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-        border-bottom: none;
-        padding: 14px 16px;
-        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-      }
-      .network-panel h4 {
-        font-size: 15px;
-        text-align: center;
-        position: relative;
-        padding-top: 4px;
-      }
-      .network-panel h4::before {
-        content: '';
-        position: absolute;
-        top: -6px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 40px;
-        height: 4px;
-        background: #D6CFC7;
-        border-radius: 2px;
-      }
+      .copy-addr-btn { padding: 6px 10px; font-size: 14px; min-height: 32px; min-width: 32px; }
+      .network-panel { top: auto; bottom: 0; right: 0; left: 0; transform: none; max-width: none; max-height: 50vh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; border-bottom: none; padding: 14px 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+      .network-panel h4 { font-size: 15px; text-align: center; position: relative; padding-top: 4px; }
+      .network-panel h4::before { content: ''; position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 40px; height: 4px; background: #D6CFC7; border-radius: 2px; }
       .network-list { max-height: 32vh; }
-
-           /* Кнопка Excel — внутри панели, прижата к её низу.
-         Панель сама у нижнего края экрана, значит кнопка — внизу. */
-      .download-btn {
-        width: 100%;
-        padding: 12px 16px;
-        font-size: 14px;
-        border-radius: var(--radius-sm);
-        margin-top: 12px;
-        box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
-      }
-
-      /* Модалка приветствия. */
-      .greeting-modal {
-        padding: 24px 20px;
-        max-width: 92vw;
-      }
+      .download-btn { width: 100%; padding: 12px 16px; font-size: 14px; border-radius: var(--radius-sm); margin-top: 12px; box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3); }
+      .greeting-modal { padding: 24px 20px; max-width: 92vw; }
       .greeting-modal h2 { font-size: 18px; }
       .greeting-modal button { width: 100%; }
-
-      /* Баннер приветствия во всю ширину снизу. */
-      .greeting-banner {
-        top: auto;
-        bottom: 14px;
-        right: 14px;
-        left: 14px;
-        max-width: none;
-      }
-
-      /* Ссылка на Яндекс.Карты — плавающая слева снизу. */
-      #yandex-link-container {
-        bottom: 14px !important;
-        left: 14px !important;
-      }
-      #yandex-link-container a {
-        padding: 12px 16px !important;
-        font-size: 13px;
-      }
+      .greeting-banner { top: auto; bottom: 14px; right: 14px; left: 14px; max-width: none; }
+      #yandex-link-container { bottom: 14px !important; left: 14px !important; }
+      #yandex-link-container a { padding: 12px 16px !important; font-size: 13px; }
     }
-          /* ---------- Переключатель внешних сетей ---------- */
-    .external-switcher {
-      display: flex;
-      gap: 4px;
-      padding: 3px;
-      background: rgba(232, 225, 216, 0.5);
-      border-radius: 999px;
-      justify-content: center;
-      margin-bottom: 6px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      max-width: 100%;
-    }
+
+    /* ---------- Переключатель внешних сетей ---------- */
+    .external-switcher { display: flex; gap: 4px; padding: 3px; background: rgba(232, 225, 216, 0.5); border-radius: 999px; justify-content: center; margin-bottom: 6px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
     .external-switcher::-webkit-scrollbar { display: none; }
-    .external-switch-btn {
-      padding: 7px 16px;
-      border-radius: 999px;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background .18s, color .18s;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .external-switch-btn.active {
-      background: var(--gradient-accent);
-      color: #fff;
-      box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3);
-    }
-          /* ---------- Панель фильтра внешних сетей (на вкладке «Все сети») ---------- */
-    .external-filter-panel {
-      position: absolute;
-      top: 14px;
-      right: 14px;
-      z-index: 1001;
-      background: var(--surface-glass);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      padding: 12px 14px;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-card);
-      border: 1px solid var(--border);
-      max-width: 260px;
-      font-size: 13px;
-    }
-    .external-filter-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 8px;
-    }
-    .external-filter-list {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .external-filter-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 6px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: background .15s;
-    }
-    .external-filter-item:hover {
-      background: rgba(232, 114, 12, 0.08);
-    }
-    .external-filter-item input[type="checkbox"] {
-      accent-color: var(--accent);
-      width: 15px;
-      height: 15px;
-      margin: 0;
-      flex-shrink: 0;
-    }
-    .external-filter-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      border: 2px solid #fff;
-      box-shadow: 0 0 0 1px rgba(31,27,22,0.08);
-    }
-    @media (max-width: 820px) {
-      .external-filter-panel {
-        top: auto;
-        bottom: 14px;
-        right: 8px;
-        left: 8px;
-        max-width: none;
-      }
-    }
-          /* ---------- Убираем выделение текста в интерфейсе ---------- */
-    body {
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-    }
-    input, textarea, select,
-    .leaflet-popup-content {
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
-      user-select: text;
-    }
+    .external-switch-btn { padding: 7px 16px; border-radius: 999px; border: none; background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .18s, color .18s; white-space: nowrap; flex-shrink: 0; }
+    .external-switch-btn.active { background: var(--gradient-accent); color: #fff; box-shadow: 0 3px 10px rgba(232, 114, 12, 0.3); }
+
+    /* ---------- Панель фильтра внешних сетей ---------- */
+    .external-filter-panel { position: absolute; top: 14px; right: 14px; z-index: 1001; background: var(--surface-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); padding: 12px 14px; border-radius: var(--radius-lg); box-shadow: var(--shadow-card); border: 1px solid var(--border); max-width: 260px; font-size: 13px; }
+    .external-filter-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .external-filter-list { display: flex; flex-direction: column; gap: 4px; }
+    .external-filter-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: background .15s; }
+    .external-filter-item:hover { background: rgba(232, 114, 12, 0.08); }
+    .external-filter-item input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; flex-shrink: 0; }
+    .external-filter-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(31,27,22,0.08); }
+    @media (max-width: 820px) { .external-filter-panel { top: auto; bottom: 14px; right: 8px; left: 8px; max-width: none; } }
+
+    /* ---------- Убираем выделение текста ---------- */
+    body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+    input, textarea, select, .leaflet-popup-content { -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text; }
   </style>
 </head>
 <body>
-    <div class="control-panel">
+  <div class="control-panel">
     <div id="fuel-filter-wrapper" style="position: relative;">
       <button id="fuel-filter-btn" class="fuel-filter-btn" onclick="toggleFuelFilter(event)">
         <span id="fuel-filter-label">Фильтр · ДТ-Л</span>
         <span class="fuel-filter-arrow">▾</span>
       </button>
       <div id="fuel-filter-dropdown" class="fuel-filter-dropdown" style="display:none;">
-        <button class="fuel-option" data-fuel="ДТ-Л" onclick="selectFuel('ДТ-Л')">ДТ-Л</button>
-        <button class="fuel-option" data-fuel="ДТ-Е" onclick="selectFuel('ДТ-Е')">ДТ-Е</button>
-        <button class="fuel-option" data-fuel="ДТ-З" onclick="selectFuel('ДТ-З')">ДТ-З</button>
-        <button class="fuel-option" data-fuel="Газ" onclick="selectFuel('Газ')">Газ</button>
+        <!-- Кнопки будут добавлены динамически через JS -->
       </div>
     </div>
   </div>
   <div id="map"></div>
-      <div class="network-panel" id="network-panel">
+  <div class="network-panel" id="network-panel">
     <div class="network-header">
       <h4 id="network-panel-title">АЗС на маршруте</h4>
       <button class="panel-toggle" onclick="togglePanel()" title="Свернуть">▼</button>
@@ -1189,7 +623,7 @@
       <span style="font-size:48px;">🤝</span>
       <h2>Специальное предложение</h2>
       <p id="greeting-text"></p>
-            <button onclick="document.getElementById('greeting-overlay').style.display='none'">Понятно</button>
+      <button onclick="document.getElementById('greeting-overlay').style.display='none'">Понятно</button>
     </div>
   </div>
   <div id="greeting-banner" class="greeting-banner"></div>
@@ -1200,15 +634,15 @@
     <span class="network" id="best-price-network"></span>
     <button class="show-btn" onclick="focusBestPrice()">Показать</button>
   </div>
-    <div id="top-networks-bar">
+  <div id="top-networks-bar">
     <div class="top-networks-title">Лучшие цены по стране</div>
     <div class="top-networks-row" id="top-networks-row"></div>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -1233,21 +667,19 @@
     let filteredStations = [];
 
     // Текущий вид карты: 'route' (только маршрут) или 'network' (вся сеть).
-    // По умолчанию — маршрут, если он есть. Меняется кнопками сверху.
     let currentView = 'route';
 
     // Слой станций вдоль маршрута. Заполняется при построении карты в конструкторе.
-    // Если маршрута нет — пустой массив, и все станции показываются всегда.
     let stationsOnRoute = [];
     // Новое: данные, приходящие из meta от quick-service
     let clientRouteGeojson = null;   // геометрия маршрута от менеджера
     let clientMapTitle = null;       // заголовок карты
     let clientRadiusKm = 5;          // радиус, с которым строился маршрут
     let clientRouteLine = null; 
-        // Пункт 2.3. Массив маршрутов и активный маршрут.
+    // Пункт 2.3. Массив маршрутов и активный маршрут.
     let clientRoutes = [];           // [{ id, name, geojson, radius_km }]
     let activeRouteIndex = 0;        // индекс активного маршрута
-    let clientRouteLines = [];       // массив слоёв Leaflet (по одному на маршрут)// слой Leaflet с линией маршрута
+    let clientRouteLines = [];       // массив слоёв Leaflet (по одному на маршрут)
     // Внешние сети (Лукойл, Роснефть) — станции без цен.
     let clientExternalStations = [];
     let currentExternalNetwork = 'Лукойл'; // активная под-вкладка
@@ -1256,6 +688,7 @@
       'Лукойл':   '#DC2626',
       'Роснефть': '#EAB308',
     };
+
     const highwayRoutes = {
       m10: { name: "Москва – Санкт‑Петербург (М10)", coords: [[37.5634,55.7756],[35.9176,56.8587],[34.9604,57.0411],[33.2486,57.9797],[31.2749,58.5228],[30.5043,59.8066]], radius: 5 },
       m4:  { name: "Москва – Краснодар (М4)", coords: [[37.6073,55.5796],[39.1844,51.6720],[39.7187,47.2225],[38.9753,45.0355]], radius: 5 },
@@ -1263,15 +696,47 @@
       m7:  { name: "Москва – Владивосток (М7)", coords: [[37.6252,55.7530],[40.3966,56.1365],[43.9361,56.2965],[49.1233,55.7879],[56.2502,58.0105],[60.6057,56.8389],[65.5272,57.1522],[73.3682,54.9893],[82.9357,55.0084],[92.8526,56.0105],[104.2807,52.2864],[107.5842,51.8335],[113.4994,52.0340],[119.7308,53.7574],[127.2411,52.4493],[127.5274,50.2525],[135.0718,48.4802],[131.8855,43.1155]], radius: 5 }
     };
 
-        // ============================================================
+    // ============================================================
     // Фильтр топлива: раскрывающаяся плашка
     // ============================================================
+
+    function buildFuelButtons() {
+      const fuelsSet = new Set();
+      allStations.forEach(station => {
+        if (station.prices) {
+          station.prices.forEach(p => {
+            if (p.fuel_type) fuelsSet.add(p.fuel_type);
+          });
+        }
+      });
+      
+      let fuels = Array.from(fuelsSet).sort();
+      if (fuels.length === 0) fuels.push('ДТ-Л'); 
+
+      if (!fuels.includes(currentFuel)) {
+        currentFuel = fuels.includes('ДТ-Л') ? 'ДТ-Л' : fuels[0];
+      }
+
+      const dropdown = document.getElementById('fuel-filter-dropdown');
+      if (!dropdown) return;
+      
+      dropdown.innerHTML = '';
+      fuels.forEach(fuel => {
+        const btn = document.createElement('button');
+        btn.className = 'fuel-option' + (fuel === currentFuel ? ' active' : '');
+        btn.textContent = fuel;
+        btn.dataset.fuel = fuel;
+        btn.onclick = () => selectFuel(fuel);
+        dropdown.appendChild(btn);
+      });
+      
+      updateFuelFilterLabel();
+    }
 
     function updateFuelFilterLabel() {
       const label = document.getElementById('fuel-filter-label');
       if (label) label.textContent = 'Фильтр · ' + currentFuel;
 
-      // Подсвечиваем активный вариант в плашке.
       document.querySelectorAll('.fuel-option').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.fuel === currentFuel);
       });
@@ -1313,39 +778,8 @@
       }
     });
 
-    // Инициализация фильтра при загрузке.
     function initFuelFilter() {
       updateFuelFilterLabel();
-    }
-
-    function buildRouteButtons() {
-      const container = document.getElementById('route-panel');
-      container.innerHTML = '<span style="font-size:12px;margin-right:4px;">Маршрут:</span>';
-      const allBtn = document.createElement('button');
-      allBtn.className = 'route-btn active';
-      allBtn.textContent = 'Все';
-      allBtn.dataset.route = '';
-      allBtn.addEventListener('click', function() {
-        document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        currentRoute = null;
-        applyFilters();
-      });
-      container.appendChild(allBtn);
-
-      Object.keys(highwayRoutes).forEach(key => {
-        const btn = document.createElement('button');
-        btn.className = 'route-btn';
-        btn.textContent = key.toUpperCase();
-        btn.dataset.route = key;
-        btn.addEventListener('click', function() {
-          document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
-          currentRoute = highwayRoutes[key];
-          applyFilters();
-        });
-        container.appendChild(btn);
-      });
     }
 
     function getPriceForFuel(station, fuel) {
@@ -1353,26 +787,20 @@
       return station.prices.find(p => p.fuel_type === fuel) || null;
     }
 
-               function getMarkerColor(station, price) {
-      // Явно заданные цвета сетей в админке.
+    function getMarkerColor(station, price) {
       if (station.color_code === 1) return '#16A34A'; // Яркий зелёный
       if (station.color_code === 2) return '#84CC16'; // Салатовый
       if (station.color_code === 3) return '#1E88E5'; // Синий
 
-      // Нет цены — синий.
       if (!price) return '#1E88E5';
-
-      // Газовая станция без своей цены — синий.
       if (currentFuel === 'Газ') return '#1E88E5';
 
-      // Текстовая цена (скидка или наценка) — цвет по слову в тексте.
       if (price.is_discount) {
         const text = (price.discount_text || '').toUpperCase();
-        if (text.includes('НАЦЕНКА')) return '#84CC16'; // Наценку делаем салатовой
-        return '#16A34A'; // Скидку делаем ярко-зелёной
+        if (text.includes('НАЦЕНКА')) return '#84CC16';
+        return '#16A34A';
       }
 
-      // Числовая цена: градация относительно средней.
       const validPrices = filteredStations
         .map(s => getPriceForFuel(s, currentFuel))
         .filter(p => p && !p.is_discount && p.price_value > 0)
@@ -1381,11 +809,11 @@
       if (validPrices.length === 0) return '#1E88E5';
 
       const avg = validPrices.reduce((sum, v) => sum + v, 0) / validPrices.length;
-      if (price.price_value < avg) return '#16A34A'; // Яркий зелёный — дешевле среднего
-      return '#84CC16'; // Салатовый — средняя и дороже
+      if (price.price_value < avg) return '#16A34A';
+      return '#84CC16';
     }
-           function applyFilters() {
-      // На вкладке «Другая сеть» партнёрские станции скрываем полностью.
+
+    function applyFilters() {
       if (currentView === 'external') {
         markersLayer.clearLayers();
         document.getElementById('network-panel').style.display = 'none';
@@ -1394,7 +822,6 @@
         return;
       }
 
-      // Определяем базовый набор станций в зависимости от активной вкладки.
       let baseStations;
       if (clientRouteGeojson && currentView === 'route') {
         baseStations = stationsOnRoute;
@@ -1402,16 +829,12 @@
         baseStations = allStations;
       }
 
-      // Фильтруем по топливу.
       const stations = baseStations.filter(
         station => getPriceForFuel(station, currentFuel) !== null
       );
       filteredStations = stations;
       displayStations(stations);
 
-      // Панель сетей справа показываем только на вкладке «Мой маршрут».
-          // Панель сетей справа показываем всегда, если есть станции.
-      // Заголовок меняется в зависимости от активной вкладки.
       if (stations.length > 0) {
         updateNetworkPanel(stations);
         const titleEl = document.getElementById('network-panel-title');
@@ -1428,15 +851,10 @@
       }
     }
 
-  
-    // Хранит данные о лучшей цене, чтобы кнопка «Показать» знала, куда лететь.
     let bestPriceStation = null;
     let bestPriceValue = null;
-    // Топ-3 сетей для плашки на вкладке «Вся сеть».
     let topNetworksCache = [];
-        // Центрирует карту так, чтобы попап маркера оказался в центре экрана.
-    // Сдвигаем цель вверх на offsetY пикселей — маркер окажется чуть ниже центра,
-    // а попап над ним — примерно по центру.
+
     function focusWithOffset(latlng, zoom) {
       const targetZoom = Math.max(map.getZoom(), zoom || 13);
       const point = map.project(L.latLng(latlng[0], latlng[1]), targetZoom);
@@ -1446,8 +864,6 @@
       map.setView(newLatLng, targetZoom, { animate: true });
     }
 
-    // Открывает попап маркера, ближайшего к заданной точке.
-    // Вызываем после анимации карты, чтобы попап появился в правильном месте.
     function openPopupAt(latlng) {
       markersLayer.eachLayer(layer => {
         const ll = layer.getLatLng && layer.getLatLng();
@@ -1456,9 +872,7 @@
         }
       });
     }
-    // Обновляет нижнюю строку «Лучшая цена».
-    // Показывается только на «Моём маршруте» (или если маршрута нет).
-    // На «Всей сети» (ПК) эта строка скрыта — там работает топ-3.
+
     function updateBestPriceBar() {
       const bar = document.getElementById('best-price-bar');
       if (!bar) return;
@@ -1479,16 +893,13 @@
       bar.classList.add('visible');
     }
 
-    // Кнопка «Показать» у строки «Лучшая цена» — центрирует и открывает попап.
-        function focusBestPrice() {
+    function focusBestPrice() {
       if (!bestPriceStation || !bestPriceStation.lat || !bestPriceStation.lon) return;
       const latlng = [bestPriceStation.lat, bestPriceStation.lon];
       focusWithOffset(latlng);
       setTimeout(() => openPopupAt(latlng), 350);
     }
-    
 
-    // Обновляет плашку топ-3 сетей. Только ПК и только «Вся сеть».
     function updateTopNetworksBar() {
       const bar = document.getElementById('top-networks-bar');
       const row = document.getElementById('top-networks-row');
@@ -1503,7 +914,6 @@
         return;
       }
 
-      // Группируем станции по сетям, считаем минимальную числовую цену.
       const byNet = {};
       filteredStations.forEach(station => {
         const name = station.network_name || 'Прочие';
@@ -1552,8 +962,7 @@
       bar.classList.add('visible');
     }
 
-    // Клик «Показать» на карточке сети — центрирует на лучшей АЗС этой сети.
-        function focusTopNetwork(idx) {
+    function focusTopNetwork(idx) {
       const net = topNetworksCache[idx];
       if (!net || !net.bestStation) return;
       const st = net.bestStation;
@@ -1562,12 +971,12 @@
       focusWithOffset(latlng);
       setTimeout(() => openPopupAt(latlng), 350);
     }
+
     function displayStations(stations) {
       markersLayer.clearLayers();
       bestPriceStation = null;
       bestPriceValue = null;
 
-      // Находим станцию с самой низкой числовой ценой.
       stations.forEach(station => {
         const p = getPriceForFuel(station, currentFuel);
         if (p && !p.is_discount && p.price_value > 0) {
@@ -1586,7 +995,6 @@
         const isBest = bestPriceStation && station.id === bestPriceStation.id;
 
         if (isBest) {
-          // Лучшая цена — зелёная звезда.
           const icon = L.divIcon({
             className: '',
             html: '<div class="best-price-marker">★</div>',
@@ -1595,7 +1003,7 @@
             popupAnchor: [0, -14]
           });
           marker = L.marker([station.lat, station.lon], { icon }).addTo(markersLayer);
-               } else {
+        } else {
           marker = L.circleMarker([station.lat, station.lon], {
             radius: 10,
             fillColor: color,
@@ -1605,9 +1013,8 @@
           }).addTo(markersLayer);
         }
 
-               let popupContent = `<b>${station.name || 'АЗС'}</b>`;
+        let popupContent = `<b>${station.name || 'АЗС'}</b>`;
 
-        // Адрес + кнопка «копировать».
         if (station.address) {
           popupContent += `<div class="popup-address-row">`;
           popupContent += `<span>${station.address}</span>`;
@@ -1615,18 +1022,13 @@
           popupContent += `</div>`;
         }
 
-                // Цена — отдельным блоком, цвет берётся от маркера.
-                // Цена — отдельным блоком, цвет берётся от маркера.
         if (price) {
           if (price.is_discount) {
-            // Текстовая цена: префикс «Скидка:» убран, цвет по слову в тексте.
-                        const text = (price.discount_text || 'уточняйте');
+            const text = (price.discount_text || 'уточняйте');
             const upper = text.toUpperCase();
-            // Для наценки — оранжевый, для остального — цвет маркера (зелёный).
             const textColor = upper.includes('НАЦЕНКА') ? '#E8720C' : color;
             popupContent += `<div class="popup-discount" style="color:${textColor}">${text}</div>`;
-                   } else {
-            // Числовая цена: если маркер салатовый, делаем текст оранжевым.
+          } else {
             const priceTextColor = (color === '#84CC16') ? '#E8720C' : color;
             popupContent += `<div class="popup-price" style="color:${priceTextColor}">${price.price_value} ₽/л</div>`;
             if (station.market_price && !isNaN(station.market_price)) {
@@ -1642,7 +1044,6 @@
           popupContent += `<div class="popup-no-price" style="color:${color}">Цена не указана для ${currentFuel}</div>`;
         }
 
-        // Регион — отдельной строкой с отступом.
         if (station.region) {
           popupContent += `<div class="popup-region">Регион: ${station.region}</div>`;
         }
@@ -1650,12 +1051,9 @@
         marker.bindPopup(popupContent);
       });
 
-              // Обновляем нижние плашки: «Лучшая цена» и топ-3 сетей.
       updateBestPriceBar();
       updateTopNetworksBar();
 
-      // fitBounds делаем только если нет маршрута — иначе карта уже подстроена
-      // под маршрут в drawClientRoutes().
       if (!clientRouteGeojson && stations.length > 0) {
         const bounds = L.latLngBounds(
           stations.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon])
@@ -1664,50 +1062,9 @@
       }
     }
 
-    async function showRouteOnMap(route) {
-      if (routeLine) map.removeLayer(routeLine);
-      yandexLinkContainer.style.display = 'none';
-
-      try {
-        const points = route.coords.map(c => `point=${c[1]},${c[0]}`).join('&');
-        const url = `https://graphhopper.com/api/1/route?${points}&vehicle=car&locale=ru&key=${GH_API_KEY}&avoid=toll&points_encoded=false`;
-
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('GraphHopper error');
-        const data = await response.json();
-        if (!data.paths || data.paths.length === 0) throw new Error('No route');
-
-        const coords = data.paths[0].points.coordinates;
-        const latlngs = coords.map(c => [c[1], c[0]]);
-        routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-
-        // Формируем URL для Яндекс.Карт (по желанию)
-        const yandexUrl = buildYandexMapUrl(route.coords.map(c => [c[1], c[0]]));
-        const link = document.getElementById('yandex-link');
-        link.href = yandexUrl;
-        yandexLinkContainer.style.display = 'block';
-      } catch (e) {
-        console.warn('GraphHopper failed, fallback to straight lines', e);
-        const latlngs = route.coords.map(c => [c[1], c[0]]);
-        routeLine = L.polyline(latlngs, { color: '#1565C0', weight: 5, opacity: 0.8 }).addTo(map);
-        yandexLinkContainer.style.display = 'none';
-      }
-    }
-
-    function buildYandexMapUrl(points) {
-      const coordsStr = points.map(p => `${p[1]},${p[0]}`).join('~');
-      return `https://yandex.ru/maps/?rtext=${coordsStr}&rtt=auto`;
-    }
-
-        // ============================================================
-    // Пункт 5. Панель сетей: раскрытие, сортировка, центрирование на АЗС
-    // ============================================================
-
-    // Хранит данные о сетях и станциях, чтобы обрабатывать клики.
     let networksData = {};
 
     function updateNetworkPanel(stations) {
-      // Группируем станции по сетям.
       const byNetwork = {};
       stations.forEach(station => {
         const netName = station.network_name || 'Прочие';
@@ -1727,7 +1084,6 @@
             byNetwork[netName].minPrice = p.price_value;
           }
         } else if (p && p.is_discount) {
-          // У сети только текстовые цены — берём первую как ориентир.
           if (byNetwork[netName].minPriceText === null) {
             byNetwork[netName].minPriceText = p.discount_text || 'условие';
           }
@@ -1735,7 +1091,6 @@
         byNetwork[netName].stations.push(station);
       });
 
-      // Сортируем сети по минимальной цене (числовые — вперёд, текстовые в конце).
       const networkNames = Object.keys(byNetwork).sort((a, b) => {
         const A = byNetwork[a], B = byNetwork[b];
         if (A.minPrice !== null && B.minPrice !== null) return A.minPrice - B.minPrice;
@@ -1744,11 +1099,9 @@
         return a.localeCompare(b);
       });
 
-      // Самая дешёвая сеть.
       const cheapestNet = networkNames.length > 0 && byNetwork[networkNames[0]].minPrice !== null
         ? networkNames[0] : null;
 
-      // Формируем HTML.
       const listDiv = document.getElementById('network-list');
       let html = '';
       if (networkNames.length === 0) {
@@ -1757,7 +1110,7 @@
         networkNames.forEach(netName => {
           const net = byNetwork[netName];
           const isCheapest = netName === cheapestNet;
-                   let priceLabel;
+          let priceLabel;
           let priceColor = '';
           if (net.minPrice !== null) {
             priceLabel = net.minPrice.toFixed(2) + ' ₽/л';
@@ -1776,17 +1129,15 @@
               ${net.region ? `<span class="network-region">${net.region}</span>` : ''}
               <span class="network-arrow">▶</span>
             </div>
-                        <div class="network-price"${priceColor ? ` style="color:${priceColor};"` : ''}>${priceLabel}</div>
+            <div class="network-price"${priceColor ? ` style="color:${priceColor};"` : ''}>${priceLabel}</div>
           </div>
           <div class="network-stations" id="netstations-${encodeURIComponent(netName)}"></div>`;
         });
       }
       listDiv.innerHTML = html;
 
-      // Сохраняем данные для кликов.
       networksData = byNetwork;
 
-      // Для Excel.
       window._networkData = {
         nets: networkNames,
         details: Object.fromEntries(
@@ -1796,7 +1147,6 @@
       };
     }
 
-    // Раскрывает/сворачивает сеть и заполняет список её АЗС.
     function toggleNetwork(encodedName) {
       const netName = decodeURIComponent(encodedName);
       const el = document.querySelector(`.network-item[data-network="${encodedName}"]`);
@@ -1810,7 +1160,6 @@
         return;
       }
 
-      // Формируем список станций, отсортированный по цене.
       const net = networksData[netName];
       if (!net) return;
       const sortedStations = net.stations.slice().sort((a, b) => {
@@ -1846,8 +1195,7 @@
       listEl.classList.add('expanded');
     }
 
-    // Центрирует карту на выбранной АЗС и открывает попап.
-        function focusStation(stationId) {
+    function focusStation(stationId) {
       const st = allStations.find(s => s.id === stationId);
       if (!st || !st.lat || !st.lon) return;
       const latlng = [st.lat, st.lon];
@@ -1855,15 +1203,12 @@
       setTimeout(() => openPopupAt(latlng), 350);
     }
 
-    // Сворачивает / разворачивает панель на мобильной.
     function togglePanel() {
       const panel = document.getElementById('network-panel');
       if (!panel) return;
       panel.classList.toggle('collapsed');
     }
-      // ============================================================
-    // Копирование адреса станции из попапа
-    // ============================================================
+
     function copyAddressById(stationId, btnEl) {
       const station = filteredStations.find(s => s.id === stationId);
       if (!station || !station.address) return;
@@ -1907,21 +1252,14 @@
       }
       document.body.removeChild(ta);
     }
-           // ============================================================
-    // Пункт 4. Экспорт Excel через ExcelJS: стили, цвета, единый файл
-    // ============================================================
-        window.downloadExcel = async function() {
+
+    window.downloadExcel = async function() {
       if (!window._networkData) return;
 
       const wb = new ExcelJS.Workbook();
       wb.creator = 'Карта АЗС';
       wb.created = new Date();
 
-      // Если маршрутов нет — делаем один лист по всем станциям.
-      // Если есть — отдельный лист на каждый маршрут.
-            // Логика листов:
-      // - На вкладке «Мой маршрут» с маршрутами → отдельный лист на каждый маршрут.
-      // - На вкладке «Вся сеть» или на карте без маршрута → один лист «Вся сеть».
       const useRouteSheets = clientRoutes.length > 0 && currentView === 'route';
 
       if (useRouteSheets) {
@@ -1945,11 +1283,9 @@
           await addRouteSheet(wb, safeSheetName, routeStations);
         }
       } else {
-        // «Вся сеть» — один общий лист.
         await addRouteSheet(wb, 'Вся сеть', filteredStations);
       }
 
-      // Сохранение.
       const buffer = await wb.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -1966,18 +1302,16 @@
       URL.revokeObjectURL(url);
     };
 
-    // Добавляет лист с данными по маршруту.
     async function addRouteSheet(wb, sheetName, stations) {
       const ws = wb.addWorksheet(sheetName, {
         pageSetup: { fitToPage: true, orientation: 'landscape' }
       });
 
       ws.columns = [
-        { width: 30 }, { width: 42 }, { width: 20 }, { width: 22 }, { width: 16 }
+        { width: 30 }, { width: 42 }, { width: 20 }, { width: 22 }, { width: 16 }, { width: 16 }
       ];
 
-      // Заголовок.
-      ws.mergeCells('A1:E1');
+      ws.mergeCells('A1:F1');
       const titleCell = ws.getCell('A1');
       titleCell.value = 'Коммерческое предложение';
       titleCell.font = { name: 'Arial', size: 18, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1985,7 +1319,6 @@
       titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8720C' } };
       ws.getRow(1).height = 36;
 
-      // Сводка.
       let bestPrice = null;
       let sumPrice = 0;
       let countNumeric = 0;
@@ -2028,9 +1361,8 @@
       });
       rowIdx++;
 
-      // Шапка таблицы.
       const headerRowIdx = rowIdx;
-      const headers = ['Название', 'Адрес', 'Сеть', 'Регион', 'Цена'];
+      const headers = ['Название', 'Адрес', 'Сеть', 'Регион', 'Топливо', 'Цена'];
       headers.forEach((h, i) => {
         const cell = ws.getCell(headerRowIdx, i + 1);
         cell.value = h;
@@ -2040,7 +1372,6 @@
       });
       ws.getRow(headerRowIdx).height = 26;
 
-      // Строки станций.
       const sorted = stations.slice().sort((a, b) => {
         const pa = getPriceForFuel(a, currentFuel);
         const pb = getPriceForFuel(b, currentFuel);
@@ -2082,6 +1413,7 @@
           { value: address, align: 'left' },
           { value: network, align: 'left' },
           { value: region, align: 'left' },
+          { value: currentFuel, align: 'left' },
           { value: priceText, align: 'left', color: priceColor, bold: !!priceColor }
         ];
 
@@ -2107,9 +1439,6 @@
 
       ws.views = [{ state: 'frozen', ySplit: headerRowIdx }];
     }
-    
-
-     
 
     function showGreeting(area, showGreetingFlag) {
       if (!showGreetingFlag) return;
@@ -2149,7 +1478,7 @@
       return msg;
     }
 
-       // Загрузка данных
+    // Загрузка данных
     fetch(`${API_URL}?token=${token}`)
       .then(response => {
         if (!response.ok) throw new Error('Network response was not ok');
@@ -2162,16 +1491,13 @@
           const area = meta.area || 'России';
           const showGreetingFlag = meta.show_greeting !== false;
 
-          // Новое: читаем маршрут, заголовок и радиус из meta.
-                             clientMapTitle = meta.map_title || null;
+          clientMapTitle = meta.map_title || null;
           clientRadiusKm = meta.radius_km || 5;
-                    // Внешние сети.
+          
           clientExternalStations = Array.isArray(meta.external_stations)
             ? meta.external_stations
             : [];
 
-          // Читаем массив маршрутов. Если его нет — берём старое поле
-          // route_geojson и превращаем в массив из одного маршрута.
           if (Array.isArray(meta.routes) && meta.routes.length > 0) {
             clientRoutes = meta.routes.map(r => ({
               id: r.id || String(Math.random()),
@@ -2190,12 +1516,12 @@
             clientRoutes = [];
           }
 
-          // Для обратной совместимости оставляем clientRouteGeojson равным
-          // активному маршруту.
           clientRouteGeojson = clientRoutes.length > 0 ? clientRoutes[0].geojson : null;
           activeRouteIndex = 0;
 
-                          initFuelFilter();
+          // ВАЖНО: Сначала строим кнопки топлива, потом инициализируем фильтр
+          buildFuelButtons();
+          initFuelFilter();
           buildViewTabs();
           buildRoutesSwitcher();
           buildExternalSwitcher();
@@ -2204,16 +1530,15 @@
           showMapTitle();
           applyFilters();
           showGreeting(area, showGreetingFlag);
-                } else {
+        } else {
           allStations = data;
+          buildFuelButtons();
           initFuelFilter();
           applyFilters();
         }
       })
-           .catch(async (error) => {
+      .catch(async (error) => {
         console.error('Error fetching stations:', error);
-
-        // Пытаемся получить сообщение от сервера.
         let message = 'Ошибка загрузки данных';
         try {
           const resp = await fetch(`${API_URL}?token=${token}`);
@@ -2222,36 +1547,16 @@
         } catch (e) {}
 
         document.body.innerHTML = `
-          <div style="
-            display:flex; align-items:center; justify-content:center;
-            height:100vh; padding:20px;
-            background: linear-gradient(135deg, #FAF6F1 0%, #FEF3E2 100%);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          ">
-            <div style="
-              background:#fff; padding:40px 32px; border-radius:18px;
-              box-shadow: 0 8px 24px rgba(31,27,22,0.12);
-              border: 1px solid #E8E1D8;
-              text-align:center; max-width:420px;
-            ">
+          <div style="display:flex; align-items:center; justify-content:center; height:100vh; padding:20px; background: linear-gradient(135deg, #FAF6F1 0%, #FEF3E2 100%); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div style="background:#fff; padding:40px 32px; border-radius:18px; box-shadow: 0 8px 24px rgba(31,27,22,0.12); border: 1px solid #E8E1D8; text-align:center; max-width:420px;">
               <div style="font-size:56px; line-height:1; margin-bottom:16px;">🔒</div>
               <h2 style="color:#1F1B16; font-size:20px; margin:0 0 12px;">Ссылка недействительна</h2>
-              <p style="color:#78716C; font-size:15px; margin:0; line-height:1.5;">
-                ${message}
-              </p>
+              <p style="color:#78716C; font-size:15px; margin:0; line-height:1.5;">${message}</p>
             </div>
           </div>
         `;
       });
-        // ============================================================
-    // Шаг 10. Отрисовка маршрута клиента и заголовка карты
-    // ============================================================
-    // ============================================================
-    // Пункт 3. Фильтрация станций вдоль маршрута
-    // ============================================================
 
-    // Определяет, какие станции попадают в радиус вдоль маршрута.
-    // Использует Turf.js — та же логика, что в конструкторе.
     function computeStationsOnRoute() {
       if (!clientRouteGeojson || !clientRouteGeojson.coordinates) {
         stationsOnRoute = [];
@@ -2275,28 +1580,22 @@
       }
     }
 
-    // Строит кнопки-вкладки сверху. Показывает их только если есть маршрут.
-     function buildViewTabs() {
+    function buildViewTabs() {
       const panel = document.querySelector('.control-panel');
       if (!panel) return;
 
       const old = document.getElementById('view-tabs');
       if (old) old.remove();
 
-      // Вкладки показываем всегда — как минимум есть «Партнёрская сеть»
-      // и «Другая сеть».
       const div = document.createElement('div');
       div.className = 'view-tabs';
       div.id = 'view-tabs';
 
       let html = '';
-      // Вкладка «Мой маршрут» — только если маршрут есть.
       if (clientRouteGeojson) {
         html += `<button class="view-tab active" data-view="route" onclick="switchView('route')">Мой маршрут</button>`;
       }
-      // Вкладка «Партнёрская сеть» — всегда.
       html += `<button class="view-tab${!clientRouteGeojson ? ' active' : ''}" data-view="network" onclick="switchView('network')">Партнёрская сеть</button>`;
-      // Вкладка «Другая сеть» — всегда, если есть внешние станции.
       if (clientExternalStations.length > 0) {
         html += `<button class="view-tab" data-view="external" onclick="switchView('external')">Другая сеть</button>`;
       }
@@ -2304,22 +1603,17 @@
       div.innerHTML = html;
       panel.insertBefore(div, panel.firstChild);
 
-      // Подсвечиваем текущий вид по умолчанию.
       if (!clientRouteGeojson) currentView = 'network';
     }
-    // Переключение между вкладками.
-         function switchView(view) {
+
+    function switchView(view) {
       if (view === currentView) return;
       currentView = view;
 
-      // Обновляем активную кнопку.
       document.querySelectorAll('.view-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.view === view);
       });
 
-      // Показываем / скрываем маршрут.
-              // Показываем / скрываем маршруты.
-         // Показываем / скрываем маршруты.
       if (view === 'route') {
         clientRouteLines.forEach(line => {
           if (!map.hasLayer(line)) line.addTo(map);
@@ -2330,25 +1624,21 @@
         });
       }
 
-      // Переключатель маршрутов показываем только на вкладке «Мой маршрут».
       const switcher = document.getElementById('routes-switcher');
       if (switcher) {
         switcher.style.display = (view === 'route' && clientRoutes.length > 1) ? 'flex' : 'none';
       }
 
-      // Показываем / скрываем панель выбора внешней сети.
       const extSwitcher = document.getElementById('external-switcher');
       if (extSwitcher) {
         extSwitcher.style.display = (view === 'external') ? 'flex' : 'none';
       }
 
-         // Скрываем фильтр топлива на вкладке «Другая сеть».
       const fuelFilter = document.getElementById('fuel-filter-wrapper');
       if (fuelFilter) {
         fuelFilter.style.display = (view === 'external') ? 'none' : '';
       }
 
-      // Рисуем внешние станции при переходе на вкладку «Другая сеть».
       if (view === 'external') {
         drawExternalStations();
       } else {
@@ -2356,26 +1646,16 @@
         hideExternalFilterPanel();
       }
 
-      // Перерисовываем станции партнёрской сети.
       applyFilters();
     }
-    // Рисует линию маршрута, если он задан в meta.route_geojson.
-        // ============================================================
-    // Пункт 2.3. Отрисовка всех маршрутов
-    // ============================================================
 
-    // Цвета для маршрутов.
     const ROUTE_COLORS = ['#1565C0', '#E8720C', '#16A34A', '#8E24AA', '#0288D1', '#D81B60'];
 
-    // Рисует все маршруты. Активный — ярко и толсто, остальные — приглушённо.
     function drawClientRoutes() {
-      // Убираем старые линии.
       clientRouteLines.forEach(l => { try { map.removeLayer(l); } catch (e) {} });
       clientRouteLines = [];
 
       if (!clientRoutes || clientRoutes.length === 0) return;
-
-      const allLatLngs = [];
 
       clientRoutes.forEach((route, idx) => {
         if (!route.geojson || !route.geojson.coordinates) return;
@@ -2390,29 +1670,23 @@
           dashArray: isActive ? null : '6,6'
         }).addTo(map);
 
-        // При клике на линию — переключаемся на этот маршрут.
         line.on('click', () => setActiveRoute(idx));
 
         clientRouteLines.push(line);
-        allLatLngs.push(...latlngs);
       });
 
-      // Подстраиваем карту под активный маршрут.
       if (clientRouteLines[activeRouteIndex]) {
         map.fitBounds(clientRouteLines[activeRouteIndex].getBounds(), { padding: [50, 50] });
       }
     }
 
-    // Переключает активный маршрут.
     function setActiveRoute(idx) {
       if (idx < 0 || idx >= clientRoutes.length) return;
       activeRouteIndex = idx;
 
-      // Обновляем clientRouteGeojson для остальных функций.
       clientRouteGeojson = clientRoutes[idx].geojson;
       clientRadiusKm = clientRoutes[idx].radius_km || 5;
 
-      // Перерисовываем линии.
       clientRoutes.forEach((route, i) => {
         const line = clientRouteLines[i];
         if (!line) return;
@@ -2426,61 +1700,42 @@
         });
       });
 
-      // Пересчитываем станции вдоль активного маршрута.
       computeStationsOnRoute();
-
-      // Обновляем заголовок.
       const routeName = clientRoutes[idx].name || 'Маршрут';
       updateMapTitleText(routeName);
 
-      // Обновляем активную кнопку в переключателе.
       document.querySelectorAll('.route-switch-btn').forEach((b, i) => {
         b.classList.toggle('active', i === idx);
       });
 
-      // Перерисовываем станции.
       applyFilters();
     }
 
-    // Обновляет текст заголовка карты.
     function updateMapTitleText(text) {
       const el = document.getElementById('map-title');
       if (el) el.textContent = text;
     }
-        // ============================================================
-    // Внешние сети: отрисовка с кластеризацией
-    // ============================================================
 
-       function drawExternalStations() {
+    function drawExternalStations() {
       hideExternalStations();
 
-      // Какие станции показывать.
       let stations;
       if (currentExternalNetwork === '__all__') {
-        // Все разрешённые сети + фильтр по галочкам.
         const enabled = getEnabledExternalNetworks();
         stations = clientExternalStations.filter(s => enabled.includes(s.network_name));
-        // Показать панель фильтра.
         showExternalFilterPanel();
       } else {
-        // Конкретная сеть — без фильтра.
         stations = clientExternalStations.filter(s => s.network_name === currentExternalNetwork);
         hideExternalFilterPanel();
       }
 
       if (stations.length === 0) return;
 
-      // Цвет для маркера — по сети.
       const colorFor = (netName) => externalColors[netName] || '#888888';
-
-      // Кластерная группа. Цвет кластера — если все станции одной сети, берём её цвет,
-      // если разных — нейтральный серый.
       const uniqueNets = new Set(stations.map(s => s.network_name));
-      const clusterColor = uniqueNets.size === 1
-        ? colorFor([...uniqueNets][0])
-        : '#607D8B';
+      const clusterColor = uniqueNets.size === 1 ? colorFor([...uniqueNets][0]) : '#607D8B';
 
-           externalLayer = L.markerClusterGroup({
+      externalLayer = L.markerClusterGroup({
         maxClusterRadius: 35,
         showCoverageOnHover: false,
         spiderfyOnMaxZoom: true,
@@ -2488,20 +1743,7 @@
         iconCreateFunction: function (cluster) {
           const count = cluster.getChildCount();
           return L.divIcon({
-            html: `<div style="
-              background:${clusterColor};
-              color:#fff;
-              width:42px;
-              height:42px;
-              border-radius:50%;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              font-weight:700;
-              font-size:14px;
-              border:3px solid #fff;
-              box-shadow:0 3px 10px rgba(0,0,0,0.25);
-            ">${count}</div>`,
+            html: `<div style="background:${clusterColor};color:#fff;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.25);">${count}</div>`,
             className: '',
             iconSize: [42, 42],
           });
@@ -2512,25 +1754,19 @@
         if (!s.lat || !s.lon) return;
         const color = colorFor(s.network_name);
         const marker = L.circleMarker([s.lat, s.lon], {
-          radius: 10,
-          fillColor: color,
-          color: '#fff',
-          weight: 2.5,
-          fillOpacity: 0.95,
+          radius: 10, fillColor: color, color: '#fff', weight: 2.5, fillOpacity: 0.95,
         });
         const popup = `
           <b>${s.name || (s.station_number ? 'АЗС №' + s.station_number : 'АЗС')}</b>
           <div style="font-size:11.5px; color:#666; margin-top:2px;">${s.network_name}</div>
-          ${s.address ? `<div class="popup-address-row"><span>${s.address}</span>
-            <button class="copy-addr-btn" onclick="copyExternalAddress('${s.id}', this)" title="Скопировать">📋</button>
-          </div>` : ''}
+          ${s.address ? `<div class="popup-address-row"><span>${s.address}</span><button class="copy-addr-btn" onclick="copyExternalAddress('${s.id}', this)" title="Скопировать">📋</button></div>` : ''}
           ${s.station_number ? `<div style="font-size:12px; color:#888;">№ АЗС: ${s.station_number}</div>` : ''}
         `;
         marker.bindPopup(popup);
         externalLayer.addLayer(marker);
       });
 
-         externalLayer.addTo(map);
+      externalLayer.addTo(map);
     }
 
     function hideExternalStations() {
@@ -2539,30 +1775,21 @@
       }
       externalLayer = null;
     }
-    // ============================================================
-    // Фильтр внешних сетей (только в режиме «Все сети»)
-    // ============================================================
 
-    // Возвращает массив разрешённых сетей (по умолчанию — все).
     function getEnabledExternalNetworks() {
       const checkboxes = document.querySelectorAll('.external-filter-checkbox');
       if (checkboxes.length === 0) {
-        // Чекбоксов ещё нет — значит все включены.
         const all = Array.from(new Set(clientExternalStations.map(s => s.network_name)));
         return all;
       }
-      return Array.from(checkboxes)
-        .filter(cb => cb.checked)
-        .map(cb => cb.value);
+      return Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
     }
 
-    // Показывает панель фильтра и строит чекбоксы (один раз).
     function showExternalFilterPanel() {
       const panel = document.getElementById('external-filter-panel');
       const list = document.getElementById('external-filter-list');
       if (!panel || !list) return;
 
-      // Строим список, если ещё не построен.
       if (list.children.length === 0) {
         const allNets = Array.from(new Set(clientExternalStations.map(s => s.network_name)));
         allNets.sort();
@@ -2570,39 +1797,27 @@
         allNets.forEach(name => {
           const label = document.createElement('label');
           label.className = 'external-filter-item';
-
           const cb = document.createElement('input');
-          cb.type = 'checkbox';
-          cb.value = name;
-          cb.className = 'external-filter-checkbox';
-          cb.checked = true;
-          cb.addEventListener('change', () => {
-            // Перерисовываем станции при изменении фильтра.
-            drawExternalStations();
-          });
+          cb.type = 'checkbox'; cb.value = name; cb.className = 'external-filter-checkbox'; cb.checked = true;
+          cb.addEventListener('change', () => { drawExternalStations(); });
           label.appendChild(cb);
-
           const dot = document.createElement('span');
-          dot.className = 'external-filter-dot';
-          dot.style.background = externalColors[name] || '#888888';
+          dot.className = 'external-filter-dot'; dot.style.background = externalColors[name] || '#888888';
           label.appendChild(dot);
-
           const span = document.createElement('span');
           span.textContent = name;
           label.appendChild(span);
-
           list.appendChild(label);
         });
       }
-
       panel.style.display = 'block';
     }
 
-    // Скрывает панель фильтра.
     function hideExternalFilterPanel() {
       const panel = document.getElementById('external-filter-panel');
       if (panel) panel.style.display = 'none';
     }
+
     function copyExternalAddress(id, btnEl) {
       const s = clientExternalStations.find(x => x.id === id);
       if (!s || !s.address) return;
@@ -2619,10 +1834,6 @@
       }
     }
 
-     // Строит под-переключатель по внешним сетям.
-    // Логика:
-    //   - Если разрешена 1 сеть — только она, без «Все сети».
-    //   - Если 2+ сетей — добавляем «Все сети» + каждую отдельно.
     function buildExternalSwitcher() {
       const panel = document.querySelector('.control-panel');
       if (!panel) return;
@@ -2632,11 +1843,9 @@
 
       if (clientExternalStations.length === 0) return;
 
-      // Уникальные сети из данных.
       const networks = Array.from(new Set(clientExternalStations.map(s => s.network_name)));
       if (networks.length === 0) return;
 
-      // По умолчанию — режим «Все сети», если их 2+, иначе единственная.
       if (networks.length > 1) {
         currentExternalNetwork = '__all__';
       } else {
@@ -2648,7 +1857,6 @@
       div.id = 'external-switcher';
       div.style.display = 'none';
 
-      // Кнопка «Все сети» — только если 2+ сетей.
       if (networks.length > 1) {
         const allBtn = document.createElement('button');
         allBtn.className = 'external-switch-btn active';
@@ -2664,8 +1872,7 @@
 
       networks.forEach(name => {
         const btn = document.createElement('button');
-        btn.className = 'external-switch-btn' +
-          ((currentExternalNetwork === name) ? ' active' : '');
+        btn.className = 'external-switch-btn' + ((currentExternalNetwork === name) ? ' active' : '');
         btn.textContent = name;
         btn.dataset.net = name;
         btn.onclick = () => {
@@ -2679,28 +1886,26 @@
       panel.appendChild(div);
     }
 
-    // Подсвечивает активную кнопку в переключателе.
     function updateExternalSwitcherActive() {
       document.querySelectorAll('.external-switch-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.net === currentExternalNetwork);
       });
     }
-    // Строит переключатель между маршрутами (если их несколько).
+
     function buildRoutesSwitcher() {
       const panel = document.querySelector('.control-panel');
       if (!panel) return;
 
-      // Убираем старый переключатель.
       const old = document.getElementById('routes-switcher');
       if (old) old.remove();
 
-      if (clientRoutes.length <= 1) return; // один маршрут — переключатель не нужен
+      if (clientRoutes.length <= 1) return;
 
       const div = document.createElement('div');
       div.className = 'routes-switcher';
       div.id = 'routes-switcher';
 
-          clientRoutes.forEach((r, i) => {
+      clientRoutes.forEach((r, i) => {
         const btn = document.createElement('button');
         btn.className = 'route-switch-btn' + (i === 0 ? ' active' : '');
         btn.textContent = r.name;
@@ -2709,20 +1914,16 @@
         div.appendChild(btn);
       });
 
-      // Переключатель виден только если активна вкладка «Мой маршрут».
       div.style.display = (currentView === 'route') ? 'flex' : 'none';
-
-      // Вставляем после заголовка (если есть) или в начало.
       panel.insertBefore(div, panel.firstChild);
     }
-    // Показывает заголовок карты в панели управления сверху.
+
     function showMapTitle() {
       if (!clientMapTitle) return;
 
       const panel = document.querySelector('.control-panel');
       if (!panel) return;
 
-      // Удаляем старый заголовок, если он был (на случай перезагрузки).
       const old = document.getElementById('map-title');
       if (old) old.remove();
 
@@ -2733,7 +1934,7 @@
 
       panel.insertBefore(div, panel.firstChild);
     }
-        // При смене размера окна — пересчитываем плашки.
+
     window.addEventListener('resize', () => {
       updateBestPriceBar();
       updateTopNetworksBar();
