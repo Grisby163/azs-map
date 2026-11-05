@@ -200,6 +200,7 @@
       padding: 10px 12px;
       border-bottom: 1px solid #F1EBE3;
       color: var(--text);
+      vertical-align: top;
     }
     tr:last-child td { border-bottom: none; }
     tbody tr { transition: background .15s; }
@@ -223,6 +224,60 @@
     a { color: var(--accent); text-decoration: none; font-weight: 500; }
     a:hover { text-decoration: underline; }
 
+    /* Блок одного топлива в таблице цен */
+    .fuel-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px dashed #F1EBE3;
+      flex-wrap: wrap;
+    }
+    .fuel-row:last-child { border-bottom: none; }
+    .fuel-label {
+      font-weight: 700;
+      font-size: 12.5px;
+      min-width: 70px;
+      color: var(--text);
+    }
+    .fuel-row input[type="number"] {
+      width: 110px;
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+    .fuel-row input[type="text"] {
+      width: 200px;
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+    .fuel-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 500;
+      font-size: 12.5px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .fuel-row button {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    .add-fuel-btn {
+      padding: 4px 10px;
+      font-size: 12px;
+      background: transparent;
+      color: var(--accent);
+      border: 1px dashed var(--accent);
+      box-shadow: none;
+      margin-top: 6px;
+    }
+    .add-fuel-btn:hover {
+      background: var(--warn-bg);
+      box-shadow: none;
+      transform: none;
+    }
+
     @media (max-width: 1024px) {
       .container { max-width: 100%; padding: 22px 20px; }
     }
@@ -240,9 +295,12 @@
       button { padding: 11px 18px; font-size: 14px; min-height: 40px; }
       #tokensTable, #networksTable, #stationsTable, #priceListsTable, #pricesTable, #unmatchedStations { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-soft); }
       #tokensTable table, #networksTable table, #stationsTable table, #priceListsTable table, #pricesTable table { min-width: 640px; box-shadow: none; margin-top: 0; }
-      th, td { padding: 9px 10px; font-size: 12.5px; white-space: nowrap; }
+      th, td { padding: 9px 10px; font-size: 12.5px; }
       table button { padding: 7px 10px; font-size: 12px; min-height: 32px; }
       #importStatus { font-size: 13px; }
+      .fuel-row { gap: 6px; }
+      .fuel-row input[type="number"] { width: 90px; }
+      .fuel-row input[type="text"] { width: 160px; }
     }
 
     @media (max-width: 480px) {
@@ -1104,6 +1162,7 @@
       } catch (e) { console.error(e); }
     }
 
+    // Загружает цены и рисует таблицу: для каждой станции — все топлива.
     async function loadPricesForEditing() {
       const priceListId = document.getElementById('priceListForPrices').value;
       if (!priceListId) return;
@@ -1118,22 +1177,41 @@
           container.innerHTML = '<p>Нет станций или цен</p>';
           return;
         }
-        let html = '<table><tr><th>Станция</th><th>Сеть</th><th>Регион</th><th>Цена</th><th></th></tr>';
+
+        let html = '<table><tr><th style="width:220px;">Станция</th><th style="width:140px;">Сеть</th><th style="width:120px;">Регион</th><th>Цены по топливам</th></tr>';
         data.forEach(item => {
-          const price = item.price;
-          const priceValue = price && !price.is_discount ? price.price_value : '';
-          const isDiscount = price ? price.is_discount : false;
-          const discountText = price ? price.discount_text : '';
+          // item.prices — объект { "ДТ-Л": {...}, "ДТ-Е": {...} }.
+          // Если пусто — показываем одну пустую строку с ДТ-Л.
+          const pricesObj = item.prices && typeof item.prices === 'object' ? item.prices : {};
+          const fuels = Object.keys(pricesObj);
+          const fuelsToRender = fuels.length > 0 ? fuels : ['ДТ-Л'];
+
+          let fuelsHtml = '';
+          fuelsToRender.forEach(fuel => {
+            const p = pricesObj[fuel] || {};
+            const priceValue = p.price_value !== undefined && p.price_value !== null ? p.price_value : '';
+            const isDiscount = !!p.is_discount;
+            const discountText = p.discount_text || '';
+            const safeFuel = String(fuel).replace(/'/g, "\\'");
+            fuelsHtml += `
+              <div class="fuel-row" data-station="${item.station_id}" data-fuel="${safeFuel}">
+                <span class="fuel-label">${fuel}</span>
+                <input type="number" step="0.01" class="fuel-price-input" value="${priceValue}" ${isDiscount ? 'disabled' : ''} placeholder="цена">
+                <label><input type="checkbox" class="fuel-discount-checkbox" ${isDiscount ? 'checked' : ''} onchange="toggleDiscount('${item.station_id}', '${safeFuel}')"> Скидка</label>
+                <input type="text" class="fuel-discount-text" value="${discountText}" placeholder="текст скидки" ${!isDiscount ? 'disabled' : ''}>
+                <button onclick="savePrice('${item.station_id}', '${safeFuel}')">Сохранить</button>
+              </div>
+            `;
+          });
+
           html += `<tr>
             <td>${item.name || ''}</td>
             <td>${item.network || ''}</td>
             <td>${item.region || ''}</td>
             <td>
-              <input type="number" step="0.01" id="price_${item.station_id}" value="${priceValue}" ${isDiscount ? 'disabled' : ''}>
-              <label><input type="checkbox" id="discount_${item.station_id}" ${isDiscount ? 'checked' : ''} onchange="toggleDiscount('${item.station_id}')"> Скидка</label>
-              <input type="text" id="discountText_${item.station_id}" value="${discountText}" placeholder="Текст скидки" ${!isDiscount ? 'disabled' : ''}>
+              ${fuelsHtml}
+              <button class="add-fuel-btn" onclick="addFuelRow('${item.station_id}')">+ Добавить топливо</button>
             </td>
-            <td><button onclick="savePrice('${item.station_id}')">Сохранить</button></td>
           </tr>`;
         });
         html += '</table>';
@@ -1141,26 +1219,80 @@
       } catch (e) { alert(e.message); }
     }
 
-    function toggleDiscount(stationId) {
-      const isChecked = document.getElementById('discount_' + stationId).checked;
-      document.getElementById('price_' + stationId).disabled = isChecked;
-      document.getElementById('discountText_' + stationId).disabled = !isChecked;
+    // Переключает режим скидки для конкретного топлива станции.
+    function toggleDiscount(stationId, fuelType) {
+      const row = document.querySelector(`.fuel-row[data-station="${stationId}"][data-fuel="${fuelType}"]`);
+      if (!row) return;
+      const checkbox = row.querySelector('.fuel-discount-checkbox');
+      const priceInput = row.querySelector('.fuel-price-input');
+      const textInput = row.querySelector('.fuel-discount-text');
+      const isChecked = checkbox.checked;
+      priceInput.disabled = isChecked;
+      textInput.disabled = !isChecked;
     }
 
-    async function savePrice(stationId) {
+    // Добавляет новую строку топлива в карточку станции.
+    function addFuelRow(stationId) {
+      const row = document.querySelector(`.fuel-row[data-station="${stationId}"]`);
+      if (!row) return;
+      const container = row.parentElement;
+      const newFuel = prompt('Название топлива (например, ДТ-Е, АИ-95):');
+      if (!newFuel) return;
+      const trimmed = newFuel.trim();
+      if (!trimmed) return;
+
+      // Проверяем, нет ли уже такого топлива.
+      const existing = container.querySelector(`.fuel-row[data-station="${stationId}"][data-fuel="${trimmed.replace(/"/g, '\\"')}"]`);
+      if (existing) {
+        alert('Такое топливо уже есть у станции.');
+        return;
+      }
+
+      const safeFuel = trimmed.replace(/'/g, "\\'");
+      const div = document.createElement('div');
+      div.className = 'fuel-row';
+      div.dataset.station = stationId;
+      div.dataset.fuel = trimmed;
+      div.innerHTML = `
+        <span class="fuel-label">${trimmed}</span>
+        <input type="number" step="0.01" class="fuel-price-input" value="" placeholder="цена">
+        <label><input type="checkbox" class="fuel-discount-checkbox" onchange="toggleDiscount('${stationId}', '${safeFuel}')"> Скидка</label>
+        <input type="text" class="fuel-discount-text" value="" placeholder="текст скидки" disabled>
+        <button onclick="savePrice('${stationId}', '${safeFuel}')">Сохранить</button>
+      `;
+      const addBtn = container.querySelector('.add-fuel-btn');
+      container.insertBefore(div, addBtn);
+    }
+
+    // Сохраняет цену для конкретного топлива станции.
+    async function savePrice(stationId, fuelType) {
       const priceListId = document.getElementById('priceListForPrices').value;
-      const isDiscount = document.getElementById('discount_' + stationId).checked;
-      const priceValue = isDiscount ? null : parseFloat(document.getElementById('price_' + stationId).value);
-      const discountText = document.getElementById('discountText_' + stationId).value.trim();
+      const row = document.querySelector(`.fuel-row[data-station="${stationId}"][data-fuel="${fuelType}"]`);
+      if (!row) {
+        alert('Не найдена строка топлива. Обновите таблицу.');
+        return;
+      }
+      const isDiscount = row.querySelector('.fuel-discount-checkbox').checked;
+      const priceValueRaw = row.querySelector('.fuel-price-input').value;
+      const priceValue = isDiscount ? null : (priceValueRaw === '' ? null : parseFloat(priceValueRaw));
+      const discountText = row.querySelector('.fuel-discount-text').value.trim();
+
       try {
         const response = await fetch(`${ADMIN_BASE_URL}/admin-update-price`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
-          body: JSON.stringify({ station_id: stationId, price_list_id: priceListId, fuel_type: 'ДТ-Л', price_value: priceValue, is_discount: isDiscount, discount_text: discountText })
+          body: JSON.stringify({
+            station_id: stationId,
+            price_list_id: priceListId,
+            fuel_type: fuelType,
+            price_value: priceValue,
+            is_discount: isDiscount,
+            discount_text: discountText
+          })
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Ошибка сохранения');
-        alert('Цена сохранена');
+        alert(`Цена «${fuelType}» сохранена`);
       } catch (e) { alert('Ошибка: ' + e.message); }
     }
 
