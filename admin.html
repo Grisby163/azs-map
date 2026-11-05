@@ -362,7 +362,7 @@
             <b>Формат цен в колонке:</b> <code>НАЦЕНКА +1,5%</code> или <code>СКИДКА -1,8%</code>.<br>
             Разделитель — запятая. Если текст не совпадает — он копируется во все листы без изменений.
           </div>
-          <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
+          <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)">
           <div id="importStatus"></div>
           <div id="mappingSection" style="display:none;">
             <h3>Несопоставленные станции</h3>
@@ -622,7 +622,8 @@
       reader.onload = function(e) {
         try {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          // Принудительно указываем разделитель ';' для CSV, чтобы заголовки не склеивались
+          const workbook = XLSX.read(data, { type: 'array', FS: ';' });
           const sheet = workbook.Sheets[workbook.SheetNames[0]];
           if (!sheet) {
             document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не найден лист</p>';
@@ -639,16 +640,18 @@
 
     function parseExcelData(rows) {
       let headerRowIdx = -1;
+      // Ищем строку заголовков
       for (let i = 0; i < Math.min(20, rows.length); i++) {
         const row = rows[i] || [];
-        const rowStr = row.join('|').toLowerCase().replace(/\s+/g, ' ');
+        const rowStr = row.join('|').toLowerCase();
         if (rowStr.includes('регион') && rowStr.includes('цена')) {
           headerRowIdx = i;
           break;
         }
       }
+      
       if (headerRowIdx === -1) {
-        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не удалось найти заголовки таблицы.</p>';
+        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не удалось найти заголовки таблицы. Убедитесь, что в файле есть колонки "Регион" и "Цена".</p>';
         return;
       }
 
@@ -658,20 +661,30 @@
       let regionCount = 0;
 
       headers.forEach((h, i) => {
-        const s = String(h || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        // Очищаем заголовок от кавычек, лишних пробелов и переводим в нижний регистр
+        const s = String(h || '').toLowerCase().replace(/["']/g, '').replace(/\s+/g, ' ').trim();
+        
         if (s === 'регион') {
           if (regionCount === 0) idxLReg = i;
           else if (regionCount === 1) idxRReg = i;
           regionCount++;
         }
         if (idxLNet === -1 && (s.includes('название') || s.includes('сеть'))) idxLNet = i;
-        if (idxLPrice === -1 && s.includes('цена') && !s.includes('до')) idxLPrice = i;
-        if (s.includes('топливо')) idxLFuel = i;
+        if (idxLPrice === -1 && s.includes('цена с')) idxLPrice = i; // Ищем конкретно "Цена с"
+        if (s.includes('вид топлива') || s === 'топливо') idxLFuel = i; // Ищем вид топлива
         if (s.includes('наименование') || (s.includes('азс') && !s.includes('название'))) idxRName = i;
         if (s.includes('адрес')) idxRAddr = i;
         if (s.includes('широта')) idxRLat = i;
         if (s.includes('долгота')) idxRLon = i;
       });
+
+      // Если колонка "Цена с" не найдена, пробуем найти просто "Цена" (но не "до")
+      if (idxLPrice === -1) {
+         headers.forEach((h, i) => {
+            const s = String(h || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            if (idxLPrice === -1 && s.includes('цена') && !s.includes('до')) idxLPrice = i;
+         });
+      }
 
       if (idxRLat === -1 && idxRAddr !== -1) { idxRLat = idxRAddr + 1; idxRLon = idxRAddr + 2; }
       if (idxRName === -1 && idxRAddr !== -1) { idxRName = idxRAddr - 1; }
@@ -707,12 +720,14 @@
           });
         }
         if (price) {
-          const normalizedFuel = fuel.replace('M', 'М').trim();
+          const normalizedFuel = fuel.replace('M', 'М').trim(); 
           networksMap.get(key).prices.push({ fuel_type: normalizedFuel, price: price });
         }
       }
 
       const networks = Array.from(networksMap.values());
+      // Выведем в консоль первые 3 сети, чтобы увидеть, какие типы топлива собрались
+      console.log('Собранные сети (тест):', networks.slice(0, 3));
 
       let lastRRegion = '';
       for (let i = headerRowIdx + 1; i < rows.length; i++) {
