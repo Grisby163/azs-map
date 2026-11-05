@@ -1620,8 +1620,11 @@
         if (price) {
           if (price.is_discount) {
             // Текстовая цена: префикс «Скидка:» убран, цвет по слову в тексте.
-            const text = (price.discount_text || 'уточняйте');
-            popupContent += `<div class="popup-discount" style="color:${color}">${text}</div>`;
+                        const text = (price.discount_text || 'уточняйте');
+            const upper = text.toUpperCase();
+            // Для наценки — оранжевый, для остального — цвет маркера (зелёный).
+            const textColor = upper.includes('НАЦЕНКА') ? '#E8720C' : color;
+            popupContent += `<div class="popup-discount" style="color:${textColor}">${text}</div>`;
           } else {
             popupContent += `<div class="popup-price" style="color:${color}">${price.price_value} ₽/л</div>`;
             if (station.market_price && !isNaN(station.market_price)) {
