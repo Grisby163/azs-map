@@ -1397,7 +1397,7 @@
 
       stations.forEach(station => {
         if (!station.lat || !station.lon) return;
-                const color = colorForNetwork(station.networks, pricesCache[station.id]);
+                const color = colorForNetwork(station.networks, firstPriceOf(station.id));
         const marker = L.circleMarker([station.lat, station.lon], {
           radius: 6, fillColor: color, color: '#fff',
           weight: 1.5, fillOpacity: 0.9
@@ -1411,6 +1411,15 @@
         marker.bindPopup(popup);
         marker.addTo(stationsLayer);
       });
+    }
+
+    // Возвращает первое доступное топливо станции для цвета маркера.
+    function firstPriceOf(stationId) {
+      const prices = pricesCache[stationId];
+      if (!prices) return null;
+      const keys = Object.keys(prices);
+      if (keys.length === 0) return null;
+      return prices[keys[0]];
     }
 
           function colorForNetwork(network, price) {
@@ -1444,7 +1453,8 @@
       try {
         const data = await fetchAdmin('prices_by_list', `price_list_id=${priceListId}`);
         if (Array.isArray(data)) {
-          const withPrice = data.filter(item => item.price).length;
+          // Станция считается «с ценами», если у неё есть хотя бы одно топливо.
+          const withPrice = data.filter(item => item.prices && Object.keys(item.prices).length > 0).length;
           info.textContent = `Станций с ценами в этом листе: ${withPrice}.`;
         } else {
           info.textContent = '';
@@ -1471,7 +1481,8 @@
         });
 
         data.forEach(item => {
-          if (item.price && item.station_id) {
+          // Станция учитывается, если у неё есть хотя бы одно топливо.
+          if (item.prices && Object.keys(item.prices).length > 0 && item.station_id) {
             const netId = stationNetworkMap[item.station_id];
             if (netId) {
               result.set(netId, (result.get(netId) || 0) + 1);
@@ -1609,7 +1620,7 @@
     // Шаг 9.3. Маршрут через OSRM, фильтрация станций, цены
     // ============================================================
 
-    // Кэш цен: { station_id: { price_value, is_discount, discount_text } }
+    // Кэш цен: { station_id: { "ДТ-Л": { price_value, is_discount, discount_text }, "ДТ-Е": {...} } }
     // Заполняется при загрузке цен для выбранного листа.
     let pricesCache = {};
 
@@ -2088,6 +2099,7 @@
     }
 
     // ---------- Загрузка цен для выбранного ценового листа ----------
+    // Новый формат: pricesCache[station_id] = { "ДТ-Л": {...}, "ДТ-Е": {...} }
     async function loadPricesForSelectedList() {
       const priceListId = document.getElementById('priceListSelect').value;
       if (!priceListId) {
@@ -2099,10 +2111,8 @@
         pricesCache = {};
         if (Array.isArray(data)) {
           data.forEach(item => {
-            // Берём только ДТ-Л — как в клиентской карте по умолчанию.
-            // Если позже добавим переключатель топлива — расширим здесь.
-            if (item.price && item.station_id) {
-              pricesCache[item.station_id] = item.price;
+            if (item.station_id && item.prices && typeof item.prices === 'object') {
+              pricesCache[item.station_id] = item.prices;
             }
           });
         }
@@ -2120,7 +2130,10 @@
       stations.forEach(station => {
         if (!station.lat || !station.lon) return;
 
-                const color = colorForNetwork(station.networks, pricesCache[station.id]);
+        const stationPrices = pricesCache[station.id] || {};
+        const firstPrice = firstPriceOf(station.id);
+        const color = colorForNetwork(station.networks, firstPrice);
+
         const marker = L.circleMarker([station.lat, station.lon], {
           radius: 7,
           fillColor: color,
@@ -2135,18 +2148,27 @@
         }
         if (station.address) popup += `${station.address}<br>`;
 
-                const price = pricesCache[station.id];
-        if (price) {
-          if (price.is_discount) {
-            const text = (price.discount_text || 'уточняйте');
-            const upper = text.toUpperCase();
-            const discColor = upper.includes('НАЦЕНКА') ? '#E8720C' : '#16A34A';
-            popup += `<div style="font-weight:bold;color:${discColor};">${text}</div>`;
-          } else if (price.price_value) {
-            popup += `<div style="font-size:16px;font-weight:bold;color:#E8720C;">${price.price_value} ₽/л</div>`;
-          }
+        // Все топлива станции — списком.
+        const fuelKeys = Object.keys(stationPrices);
+        if (fuelKeys.length > 0) {
+          popup += `<div style="margin-top:6px;">`;
+          fuelKeys.forEach(fuel => {
+            const p = stationPrices[fuel];
+            if (!p) return;
+            if (p.is_discount) {
+              const text = (p.discount_text || 'уточняйте');
+              const upper = text.toUpperCase();
+              const discColor = upper.includes('НАЦЕНКА') ? '#E8720C' : '#16A34A';
+              popup += `<div style="font-size:12.5px;"><b>${fuel}:</b> <span style="color:${discColor};font-weight:bold;">${text}</span></div>`;
+            } else if (p.price_value) {
+              popup += `<div style="font-size:12.5px;"><b>${fuel}:</b> <span style="color:#E8720C;font-weight:bold;">${p.price_value} ₽/л</span></div>`;
+            } else {
+              popup += `<div style="font-size:12.5px;"><b>${fuel}:</b> —</div>`;
+            }
+          });
+          popup += `</div>`;
         } else {
-          popup += `<div style="color:#888;">Цена не указана (ДТ-Л)</div>`;
+          popup += `<div style="color:#888;font-size:12px;">Цены не заданы</div>`;
         }
 
         if (station.region) popup += `<div style="font-size:12px;color:#666;">Регион: ${station.region}</div>`;
@@ -2491,7 +2513,7 @@
             // Названия сетей, у которых есть цены в этом листе.
             const networksWithPrices = new Set();
             data.forEach(item => {
-              if (item.price && item.network) {
+              if (item.prices && Object.keys(item.prices).length > 0 && item.network) {
                 networksWithPrices.add(item.network);
               }
             });
@@ -2800,7 +2822,16 @@
       stationsToExport.forEach(station => {
         if (!station.lat || !station.lon) return;
 
-        const price = pricesCache[station.id];
+        const stationPrices = pricesCache[station.id] || {};
+        const fuelKeys = Object.keys(stationPrices);
+
+        // Для GeoJSON берём первое доступное топливо (или пусто).
+        let priceObj = null;
+        let fuelName = null;
+        if (fuelKeys.length > 0) {
+          fuelName = fuelKeys[0];
+          priceObj = stationPrices[fuelName];
+        }
 
         features.push({
           type: 'Feature',
@@ -2811,9 +2842,11 @@
             address: station.address || '',
             region: station.region || '',
             network: (station.networks && station.networks.name) || station.network_name || '',
-            price_value: price && !price.is_discount ? price.price_value : null,
-            is_discount: price ? !!price.is_discount : false,
-            discount_text: price ? (price.discount_text || '') : ''
+            fuel_type: fuelName || '',
+            price_value: priceObj && !priceObj.is_discount ? priceObj.price_value : null,
+            is_discount: priceObj ? !!priceObj.is_discount : false,
+            discount_text: priceObj ? (priceObj.discount_text || '') : '',
+            all_prices: stationPrices
           },
           geometry: {
             type: 'Point',
