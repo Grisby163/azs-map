@@ -637,12 +637,11 @@
       reader.readAsArrayBuffer(file);
     }
 
-       function parseExcelData(rows) {
+    function parseExcelData(rows) {
       let headerRowIdx = -1;
       // Ищем строку с заголовками (содержит "регион" и "цена")
       for (let i = 0; i < Math.min(20, rows.length); i++) {
         const row = rows[i] || [];
-        // Убираем лишние пробелы и переводим в нижний регистр
         const rowStr = row.join('|').toLowerCase().replace(/\s+/g, ' ');
         if (rowStr.includes('регион') && rowStr.includes('цена')) {
           headerRowIdx = i;
@@ -650,7 +649,7 @@
         }
       }
       if (headerRowIdx === -1) {
-        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не удалось найти заголовки таблицы. Убедитесь, что в файле есть колонки "Регион" и "Цена".</p>';
+        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не удалось найти заголовки таблицы.</p>';
         return;
       }
 
@@ -660,8 +659,7 @@
       let regionCount = 0;
 
       headers.forEach((h, i) => {
-        const s = String(h || '').toLowerCase().replace(/\s+/g, ' ').trim(); // Схлопываем пробелы
-        
+        const s = String(h || '').toLowerCase().replace(/\s+/g, ' ').trim();
         if (s === 'регион') {
           if (regionCount === 0) idxLReg = i;
           else if (regionCount === 1) idxRReg = i;
@@ -677,12 +675,14 @@
         if (s.includes('долгота')) idxRLon = i;
       });
 
-      // Fallback для координат, если нет явных "Широта"/"Долгота"
       if (idxRLat === -1 && idxRAddr !== -1) { idxRLat = idxRAddr + 1; idxRLon = idxRAddr + 2; }
       if (idxRName === -1 && idxRAddr !== -1) { idxRName = idxRAddr - 1; }
 
       const networksMap = new Map(); // key: name|region -> { name, region, prices: [] }
       const stations = [];
+
+      // Утилита для нормализации (убирает дефисы, скобки, лишние пробелы, приводит к нижнему регистру)
+      const normalize = (str) => String(str || '').toLowerCase().replace(/[^a-zа-яё0-9]/gi, '');
 
       // Парсим левую таблицу (Сети и Цены)
       let lastRegion = '';
@@ -704,7 +704,12 @@
 
         const key = net.toLowerCase() + '|' + region.toLowerCase();
         if (!networksMap.has(key)) {
-          networksMap.set(key, { name: net, region: region, prices: [] });
+          networksMap.set(key, { 
+            name: net, 
+            region: region, 
+            prices: [],
+            normName: normalize(net)
+          });
         }
         if (price) {
           const normalizedFuel = fuel.replace('M', 'М').trim(); // Английская M -> Русская М
@@ -737,26 +742,30 @@
         let networkGuess = nameFull.split('(')[0].trim();
         if (!networkGuess) networkGuess = nameFull;
 
+        const normGuess = normalize(networkGuess);
+        const normFull = normalize(nameFull);
+
+        // Ищем сеть: сначала по короткому имени, потом по полному
+        let matchedNetwork = networks.find(n => n.normName === normGuess) || 
+                             networks.find(n => n.normName === normFull);
+
+        // Если не нашли точного совпадения, ищем частичное (например, "Лита Ойл" и "Лита-Ойл")
+        if (!matchedNetwork) {
+          matchedNetwork = networks.find(n => n.normName.includes(normGuess) || normGuess.includes(n.normName));
+        }
+
         stations.push({
           region: region,
           name: nameFull,
           address: address,
           lat: lat,
           lon: lon,
-          network_name: networkGuess,
-          network_region: region,
-          matched: false,
+          network_name: matchedNetwork ? matchedNetwork.name : networkGuess,
+          network_region: matchedNetwork ? matchedNetwork.region : region,
+          matched: !!matchedNetwork, // Если не нашли — false, выйдет в ручной список
           networkOptions: networks
         });
       }
-
-      // Проверка сопоставления сетей и станций
-      const uniqueNetworkNames = networks.map(n => n.name.toLowerCase());
-      stations.forEach(station => {
-        if (uniqueNetworkNames.includes(station.network_name.toLowerCase())) {
-          station.matched = true;
-        }
-      });
 
       importData = { networks, stations };
       displayImportSummary();
