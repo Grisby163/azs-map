@@ -1353,11 +1353,11 @@
       return station.prices.find(p => p.fuel_type === fuel) || null;
     }
 
-            function getMarkerColor(station, price) {
+               function getMarkerColor(station, price) {
       // Явно заданные цвета сетей в админке.
-      if (station.color_code === 1) return '#43A047'; // зелёный
-      if (station.color_code === 2) return '#10B981'; // оранжевый
-      if (station.color_code === 3) return '#1E88E5'; // синий
+      if (station.color_code === 1) return '#16A34A'; // Яркий зелёный
+      if (station.color_code === 2) return '#84CC16'; // Салатовый
+      if (station.color_code === 3) return '#1E88E5'; // Синий
 
       // Нет цены — синий.
       if (!price) return '#1E88E5';
@@ -1368,8 +1368,8 @@
       // Текстовая цена (скидка или наценка) — цвет по слову в тексте.
       if (price.is_discount) {
         const text = (price.discount_text || '').toUpperCase();
-        if (text.includes('НАЦЕНКА')) return '#10B981'; // оранжевый
-        return '#43A047'; // зелёный (скидка по умолчанию)
+        if (text.includes('НАЦЕНКА')) return '#84CC16'; // Наценку делаем салатовой
+        return '#16A34A'; // Скидку делаем ярко-зелёной
       }
 
       // Числовая цена: градация относительно средней.
@@ -1381,8 +1381,8 @@
       if (validPrices.length === 0) return '#1E88E5';
 
       const avg = validPrices.reduce((sum, v) => sum + v, 0) / validPrices.length;
-      if (price.price_value < avg) return '#43A047'; // зелёный — дешевле среднего
-      return '#FF9800'; // оранжевый — средняя и дороже
+      if (price.price_value < avg) return '#16A34A'; // Яркий зелёный — дешевле среднего
+      return '#84CC16'; // Салатовый — средняя и дороже
     }
            function applyFilters() {
       // На вкладке «Другая сеть» партнёрские станции скрываем полностью.
