@@ -830,33 +830,51 @@
       });
     }
 
-    function submitImport() {
-      // Обработка выбора для несопоставленных
+      function submitImport() {
+      // Проверяем, все ли несопоставленные станции обработаны
       if (importData.stations.some(s => !s.matched)) {
         const unmatchedIndexes = [];
         importData.stations.forEach((station, idx) => {
           if (!station.matched) unmatchedIndexes.push(idx);
         });
+
+        let hasEmptySelection = false;
+
         unmatchedIndexes.forEach((idx, i) => {
           const select = document.getElementById(`select_${i}`);
-          if (select.value === '__delete__') {
+          const val = select.value;
+          
+          if (val === '__delete__') {
             importData.stations[idx].__delete = true;
-          } else {
-            importData.stations[idx].__delete = false;
-            if (select.value === '__new__') {
-              const newName = document.getElementById(`newNetwork_${i}`).value.trim();
+          } else if (val === '__new__') {
+            const newName = document.getElementById(`newNetwork_${i}`).value.trim();
+            if (!newName) {
+              hasEmptySelection = true; // Не ввели название новой сети
+            } else {
               importData.stations[idx].network_name = newName;
-              // Если такой сети нет в списке, добавляем пустую (без цен)
-              if (newName && !importData.networks.some(n => n.name.toLowerCase() === newName.toLowerCase())) {
+              importData.stations[idx].matched = true;
+              // Добавляем новую сеть в общий список
+              if (!importData.networks.some(n => n.name.toLowerCase() === newName.toLowerCase())) {
                 importData.networks.push({ name: newName, region: importData.stations[idx].region, prices: [] });
               }
-            } else if (select.value) {
-              importData.stations[idx].network_name = select.value;
             }
+          } else if (val) {
+            importData.stations[idx].network_name = val;
+            importData.stations[idx].matched = true;
+          } else {
+            // Если список пуст (ничего не выбрано) — не пропускаем!
+            hasEmptySelection = true;
           }
         });
+
+        // Если есть необработанные станции — останавливаем импорт и просим доделать
+        if (hasEmptySelection) {
+          document.getElementById('importStatus').innerHTML = '<p style="color:red;">Пожалуйста, выберите сеть для всех станций или нажмите «УДАЛИТЬ».</p>';
+          return;
+        }
       }
 
+      // Если всё выбрано — отправляем
       const stationsToSend = importData.stations.filter(s => !s.__delete).map(s => ({
         region: s.region,
         name: s.name,
@@ -872,7 +890,7 @@
         stations: stationsToSend
       };
 
-      document.getElementById('importStatus').innerHTML += '<p>Отправка на сервер...</p>';
+      document.getElementById('importStatus').innerHTML = '<p>Отправка на сервер...</p>';
 
       fetch(`${ADMIN_BASE_URL}/admin-import`, {
         method: 'POST',
@@ -882,14 +900,15 @@
       .then(res => res.json())
       .then(data => {
         if (data.error) {
-          document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка: ${data.error}</p>`;
+          document.getElementById('importStatus').innerHTML = `<p style="color:red;">Ошибка: ${data.error}</p>`;
         } else {
-          document.getElementById('importStatus').innerHTML += `<p style="color:green;">Импорт завершён! Станций: ${data.processedStations}, Сетей: ${data.processedNetworks}</p>`;
+          document.getElementById('importStatus').innerHTML = `<p style="color:green;">Импорт завершён! Станций: ${data.processedStations}, Сетей: ${data.processedNetworks}</p>`;
         }
       })
       .catch(err => {
-        document.getElementById('importStatus').innerHTML += `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
+        document.getElementById('importStatus').innerHTML = `<p style="color:red;">Ошибка сети: ${err.message}</p>`;
       });
+    }
     }
 
     // ============================================================
