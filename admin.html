@@ -637,18 +637,20 @@
       reader.readAsArrayBuffer(file);
     }
 
-    function parseExcelData(rows) {
+       function parseExcelData(rows) {
       let headerRowIdx = -1;
-      // Ищем строку с заголовками (содержит "регион", "название", "цена", "топливо")
-      for (let i = 0; i < Math.min(15, rows.length); i++) {
-        const rowStr = (rows[i] || []).join('|').toLowerCase();
-        if (rowStr.includes('регион') && rowStr.includes('название') && rowStr.includes('топливо')) {
+      // Ищем строку с заголовками (содержит "регион" и "цена")
+      for (let i = 0; i < Math.min(20, rows.length); i++) {
+        const row = rows[i] || [];
+        // Убираем лишние пробелы и переводим в нижний регистр
+        const rowStr = row.join('|').toLowerCase().replace(/\s+/g, ' ');
+        if (rowStr.includes('регион') && rowStr.includes('цена')) {
           headerRowIdx = i;
           break;
         }
       }
       if (headerRowIdx === -1) {
-        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не удалось найти заголовки таблицы.</p>';
+        document.getElementById('importStatus').innerHTML = '<p style="color:red;">Не удалось найти заголовки таблицы. Убедитесь, что в файле есть колонки "Регион" и "Цена".</p>';
         return;
       }
 
@@ -658,23 +660,26 @@
       let regionCount = 0;
 
       headers.forEach((h, i) => {
-        const s = String(h || '').toLowerCase().trim();
+        const s = String(h || '').toLowerCase().replace(/\s+/g, ' ').trim(); // Схлопываем пробелы
+        
         if (s === 'регион') {
           if (regionCount === 0) idxLReg = i;
           else if (regionCount === 1) idxRReg = i;
           regionCount++;
         }
-        if (s.includes('название') || s.includes('сеть')) idxLNet = i;
-        if (s.includes('цена с')) idxLPrice = i;
+        if (idxLNet === -1 && (s.includes('название') || s.includes('сеть'))) idxLNet = i;
+        // Ищем "цена", но НЕ "до"
+        if (idxLPrice === -1 && s.includes('цена') && !s.includes('до')) idxLPrice = i;
         if (s.includes('топливо')) idxLFuel = i;
-        if (s.includes('наименование') || (s.includes('азс') && s !== 'название партнёрских азс')) idxRName = i;
+        if (s.includes('наименование') || (s.includes('азс') && !s.includes('название'))) idxRName = i;
         if (s.includes('адрес')) idxRAddr = i;
         if (s.includes('широта')) idxRLat = i;
         if (s.includes('долгота')) idxRLon = i;
       });
 
-      // Fallback, если нет явных "Широта"/"Долгота" (ищем по порядку после Адреса)
+      // Fallback для координат, если нет явных "Широта"/"Долгота"
       if (idxRLat === -1 && idxRAddr !== -1) { idxRLat = idxRAddr + 1; idxRLon = idxRAddr + 2; }
+      if (idxRName === -1 && idxRAddr !== -1) { idxRName = idxRAddr - 1; }
 
       const networksMap = new Map(); // key: name|region -> { name, region, prices: [] }
       const stations = [];
@@ -685,24 +690,24 @@
       for (let i = headerRowIdx + 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row) continue;
+        
         let region = idxLReg !== -1 ? String(row[idxLReg] || '').trim() : '';
         let net = idxLNet !== -1 ? String(row[idxLNet] || '').trim() : '';
         const price = idxLPrice !== -1 ? String(row[idxLPrice] || '').trim() : '';
-        const fuel = idxLFuel !== -1 ? String(row[idxLFuel] || '').trim() : '';
+        const fuel = idxLFuel !== -1 ? String(row[idxLFuel] || '').trim() : 'ДТ-Л';
 
         // Восстановление объединенных ячеек (Fill-down)
         if (region) lastRegion = region; else region = lastRegion;
         if (net) lastNet = net; else net = lastNet;
 
-        if (!net || !fuel) continue; // Пропускаем пустые или мусорные строки
+        if (!net) continue; // Пропускаем, если нет названия сети
 
         const key = net.toLowerCase() + '|' + region.toLowerCase();
         if (!networksMap.has(key)) {
           networksMap.set(key, { name: net, region: region, prices: [] });
         }
         if (price) {
-          // Нормализация топлива (замена англ. M на русскую М на всякий случай)
-          const normalizedFuel = fuel.replace('M', 'М').trim();
+          const normalizedFuel = fuel.replace('M', 'М').trim(); // Английская M -> Русская М
           networksMap.get(key).prices.push({ fuel_type: normalizedFuel, price: price });
         }
       }
@@ -714,6 +719,7 @@
       for (let i = headerRowIdx + 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row) continue;
+        
         let region = idxRReg !== -1 ? String(row[idxRReg] || '').trim() : '';
         const nameFull = idxRName !== -1 ? String(row[idxRName] || '').trim() : '';
         const address = idxRAddr !== -1 ? String(row[idxRAddr] || '').trim() : '';
@@ -723,7 +729,7 @@
         if (!nameFull) continue;
         if (region) lastRRegion = region; else region = lastRRegion;
 
-        // Очистка координат от пробелов и запятых
+        // Очистка координат от пробелов и лишних символов
         const lat = parseFloat(latRaw.replace(',', '.').replace(/\s/g, ''));
         const lon = parseFloat(lonRaw.replace(',', '.').replace(/\s/g, ''));
         if (isNaN(lat) || isNaN(lon)) continue;
@@ -740,11 +746,11 @@
           network_name: networkGuess,
           network_region: region,
           matched: false,
-          networkOptions: networks // Передаем объекты сетей для выпадающего списка
+          networkOptions: networks
         });
       }
 
-      // Проверка сопоставления
+      // Проверка сопоставления сетей и станций
       const uniqueNetworkNames = networks.map(n => n.name.toLowerCase());
       stations.forEach(station => {
         if (uniqueNetworkNames.includes(station.network_name.toLowerCase())) {
