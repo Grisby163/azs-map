@@ -1413,18 +1413,18 @@
       });
     }
 
-       function colorForNetwork(network, price) {
+          function colorForNetwork(network, price) {
       if (network) {
-        if (network.color_code === 1) return '#43A047';
-        if (network.color_code === 2) return '#10B981';
+        if (network.color_code === 1) return '#16A34A';
+        if (network.color_code === 2) return '#84CC16';
         if (network.color_code === 3) return '#1E88E5';
       }
       // Авто или без сети: ориентируемся на цену.
       if (!price) return '#607D8B';
       if (price.is_discount) {
         const text = (price.discount_text || '').toUpperCase();
-        if (text.includes('НАЦЕНКА')) return '#FF9800';
-        return '#43A047';
+        if (text.includes('НАЦЕНКА')) return '#84CC16';
+        return '#16A34A';
       }
       return '#607D8B';
     }
