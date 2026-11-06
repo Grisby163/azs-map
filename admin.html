@@ -805,43 +805,54 @@
         const lon = parseFloat(lonRaw.replace(',', '.').replace(/\s/g, ''));
         if (isNaN(lat) || isNaN(lon)) continue;
 
-       // Кандидаты — сети в том же регионе, что и станция.
-const regionNorm = normalize(region);
-const networksInRegion = networks.filter(n => normalize(n.region) === regionNorm);
+        // ============================================================
+        // СОПОСТАВЛЕНИЕ СТАНЦИИ С СЕТЬЮ
+        // Учитываем регион станции, чтобы "БРК (Чита)" не улетело
+        // в "БРК" из Бурятии.
+        // ============================================================
+        const regionNorm = normalize(region);
+        const networksInRegion = networks.filter(n => normalize(n.region) === regionNorm);
 
-// 1. Точное совпадение по полному имени (например, "БРК (Чита)").
-let matchedNetwork = networksInRegion.find(n => n.normName === normalize(nameFull));
+        const normFull = normalize(nameFull);
 
-// 2. Если не нашли — пробуем по имени без скобок ("БРК").
-if (!matchedNetwork) {
-  const networkGuess = nameFull.split('(')[0].trim() || nameFull;
-  const normGuess = normalize(networkGuess);
-  matchedNetwork = networksInRegion.find(n => n.normName === normGuess);
-}
+        // 1. Точное совпадение по полному имени в том же регионе.
+        let matchedNetwork = networksInRegion.find(n => n.normName === normFull) || null;
 
-// 3. Если всё ещё не нашли — частичное совпадение в том же регионе.
-if (!matchedNetwork) {
-  const networkGuess = nameFull.split('(')[0].trim() || nameFull;
-  const normGuess = normalize(networkGuess);
-  matchedNetwork = networksInRegion.find(n =>
-    n.normName.includes(normGuess) || normGuess.includes(n.normName)
-  );
-}
+        // 2. По имени без скобок — в том же регионе.
+        let networkGuess = nameFull.split('(')[0].trim();
+        if (!networkGuess) networkGuess = nameFull;
+        const normGuess = normalize(networkGuess);
 
-// 4. Если в регионе не нашли — fallback: ищем по всей базе,
-// но только точное совпадение по полному имени, без частичного,
-// чтобы не привязать к чужой сети.
-if (!matchedNetwork) {
-  matchedNetwork = networks.find(n => n.normName === normalize(nameFull));
-}
+        if (!matchedNetwork) {
+          matchedNetwork = networksInRegion.find(n => n.normName === normGuess) || null;
+        }
+
+        // 3. Частичное совпадение — в том же регионе.
+        if (!matchedNetwork) {
+          matchedNetwork = networksInRegion.find(n =>
+            n.normName.includes(normGuess) || normGuess.includes(n.normName)
+          ) || null;
+        }
+
+        // 4. Fallback: точное совпадение по полному имени по всей базе.
+        // Это на случай, если регион в правой таблице пустой или отличается.
+        if (!matchedNetwork) {
+          matchedNetwork = networks.find(n => n.normName === normFull) || null;
+        }
+
+        // 5. Если всё ещё нет — оставляем как несопоставленную,
+        // чтобы менеджер выбрал вручную.
+        const finalNetworkName = matchedNetwork ? matchedNetwork.name : (nameFull.split('(')[0].trim() || nameFull);
+        const finalNetworkRegion = matchedNetwork ? matchedNetwork.region : region;
+
         stations.push({
           region: region,
           name: nameFull,
           address: address,
           lat: lat,
           lon: lon,
-          network_name: matchedNetwork ? matchedNetwork.name : networkGuess,
-          network_region: matchedNetwork ? matchedNetwork.region : region,
+          network_name: finalNetworkName,
+          network_region: finalNetworkRegion,
           matched: !!matchedNetwork,
           networkOptions: networks
         });
@@ -876,19 +887,39 @@ if (!matchedNetwork) {
       const container = document.getElementById('unmatchedStations');
       const uniqueNets = [...new Set(importData.networks.map(n => n.name))];
       
-      let html = '<table border="1" cellpadding="5"><tr><th>Станция</th><th>Адрес</th><th>Выберите сеть</th></tr>';
+      let html = '<table border="1" cellpadding="5"><tr><th>Станция</th><th>Адрес</th><th>Регион</th><th>Выберите сеть</th></tr>';
       unmatched.forEach((station, idx) => {
+        // Показываем сети того же региона первыми, чтобы было проще выбрать.
+        const regionNorm = String(station.region || '').toLowerCase();
+        const sameRegion = importData.networks.filter(n => String(n.region || '').toLowerCase() === regionNorm);
+        const otherNets = importData.networks.filter(n => String(n.region || '').toLowerCase() !== regionNorm);
+
+        let optionsHtml = '<option value="">-- выбрать сеть --</option>';
+        optionsHtml += '<option value="__delete__">УДАЛИТЬ</option>';
+        if (sameRegion.length > 0) {
+          optionsHtml += '<optgroup label="В этом регионе">';
+          sameRegion.forEach(n => {
+            optionsHtml += `<option value="${n.name}|${n.region}">${n.name} (${n.region})</option>`;
+          });
+          optionsHtml += '</optgroup>';
+        }
+        if (otherNets.length > 0) {
+          optionsHtml += '<optgroup label="Другие регионы">';
+          otherNets.forEach(n => {
+            optionsHtml += `<option value="${n.name}|${n.region}">${n.name} (${n.region})</option>`;
+          });
+          optionsHtml += '</optgroup>';
+        }
+        optionsHtml += '<option value="__new__">Создать новую...</option>';
+
         html += `<tr>
           <td>${station.name}</td>
           <td>${station.address}</td>
+          <td>${station.region || ''}</td>
           <td>
-            <select id="select_${idx}">
-              <option value="">-- выбрать сеть --</option>
-              <option value="__delete__">УДАЛИТЬ</option>
-              ${uniqueNets.map(name => `<option value="${name}">${name}</option>`).join('')}
-              <option value="__new__">Создать новую...</option>
-            </select>
+            <select id="select_${idx}">${optionsHtml}</select>
             <input type="text" id="newNetwork_${idx}" placeholder="Название новой сети" style="display:none;">
+            <input type="text" id="newNetworkRegion_${idx}" placeholder="Регион новой сети" style="display:none;">
           </td>
         </tr>`;
       });
@@ -899,11 +930,14 @@ if (!matchedNetwork) {
         const select = document.getElementById(`select_${idx}`);
         select.addEventListener('change', function() {
           const newInput = document.getElementById(`newNetwork_${idx}`);
+          const newRegionInput = document.getElementById(`newNetworkRegion_${idx}`);
           if (this.value === '__new__') {
             newInput.style.display = 'inline';
+            newRegionInput.style.display = 'inline';
             newInput.focus();
           } else {
             newInput.style.display = 'none';
+            newRegionInput.style.display = 'none';
           }
         });
       });
@@ -926,17 +960,24 @@ if (!matchedNetwork) {
             importData.stations[idx].__delete = true;
           } else if (val === '__new__') {
             const newName = document.getElementById(`newNetwork_${i}`).value.trim();
+            const newRegion = document.getElementById(`newNetworkRegion_${i}`).value.trim();
             if (!newName) {
               hasEmptySelection = true;
             } else {
               importData.stations[idx].network_name = newName;
+              importData.stations[idx].network_region = newRegion || importData.stations[idx].region;
               importData.stations[idx].matched = true;
-              if (!importData.networks.some(n => n.name.toLowerCase() === newName.toLowerCase())) {
-                importData.networks.push({ name: newName, region: importData.stations[idx].region, prices: [] });
+              if (!importData.networks.some(n => n.name.toLowerCase() === newName.toLowerCase() && (n.region || '').toLowerCase() === (newRegion || '').toLowerCase())) {
+                importData.networks.push({ name: newName, region: newRegion || importData.stations[idx].region, prices: [] });
               }
             }
           } else if (val) {
-            importData.stations[idx].network_name = val;
+            // Формат "name|region"
+            const parts = val.split('|');
+            const selName = parts[0] || '';
+            const selRegion = parts[1] || '';
+            importData.stations[idx].network_name = selName;
+            importData.stations[idx].network_region = selRegion;
             importData.stations[idx].matched = true;
           } else {
             hasEmptySelection = true;
@@ -1196,8 +1237,6 @@ if (!matchedNetwork) {
 
         let html = '<table><tr><th style="width:220px;">Станция</th><th style="width:140px;">Сеть</th><th style="width:120px;">Регион</th><th>Цены по топливам</th></tr>';
         data.forEach(item => {
-          // item.prices — объект { "ДТ-Л": {...}, "ДТ-Е": {...} }.
-          // Если пусто — показываем одну пустую строку с ДТ-Л.
           const pricesObj = item.prices && typeof item.prices === 'object' ? item.prices : {};
           const fuels = Object.keys(pricesObj);
           const fuelsToRender = fuels.length > 0 ? fuels : ['ДТ-Л'];
@@ -1257,7 +1296,6 @@ if (!matchedNetwork) {
       const trimmed = newFuel.trim();
       if (!trimmed) return;
 
-      // Проверяем, нет ли уже такого топлива.
       const existing = container.querySelector(`.fuel-row[data-station="${stationId}"][data-fuel="${trimmed.replace(/"/g, '\\"')}"]`);
       if (existing) {
         alert('Такое топливо уже есть у станции.');
