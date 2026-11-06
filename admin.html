@@ -805,19 +805,35 @@
         const lon = parseFloat(lonRaw.replace(',', '.').replace(/\s/g, ''));
         if (isNaN(lat) || isNaN(lon)) continue;
 
-        let networkGuess = nameFull.split('(')[0].trim();
-        if (!networkGuess) networkGuess = nameFull;
+       // Кандидаты — сети в том же регионе, что и станция.
+const regionNorm = normalize(region);
+const networksInRegion = networks.filter(n => normalize(n.region) === regionNorm);
 
-        const normGuess = normalize(networkGuess);
-        const normFull = normalize(nameFull);
+// 1. Точное совпадение по полному имени (например, "БРК (Чита)").
+let matchedNetwork = networksInRegion.find(n => n.normName === normalize(nameFull));
 
-        let matchedNetwork = networks.find(n => n.normName === normGuess) || 
-                             networks.find(n => n.normName === normFull);
+// 2. Если не нашли — пробуем по имени без скобок ("БРК").
+if (!matchedNetwork) {
+  const networkGuess = nameFull.split('(')[0].trim() || nameFull;
+  const normGuess = normalize(networkGuess);
+  matchedNetwork = networksInRegion.find(n => n.normName === normGuess);
+}
 
-        if (!matchedNetwork) {
-          matchedNetwork = networks.find(n => n.normName.includes(normGuess) || normGuess.includes(n.normName));
-        }
+// 3. Если всё ещё не нашли — частичное совпадение в том же регионе.
+if (!matchedNetwork) {
+  const networkGuess = nameFull.split('(')[0].trim() || nameFull;
+  const normGuess = normalize(networkGuess);
+  matchedNetwork = networksInRegion.find(n =>
+    n.normName.includes(normGuess) || normGuess.includes(n.normName)
+  );
+}
 
+// 4. Если в регионе не нашли — fallback: ищем по всей базе,
+// но только точное совпадение по полному имени, без частичного,
+// чтобы не привязать к чужой сети.
+if (!matchedNetwork) {
+  matchedNetwork = networks.find(n => n.normName === normalize(nameFull));
+}
         stations.push({
           region: region,
           name: nameFull,
